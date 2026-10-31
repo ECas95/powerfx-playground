@@ -6,6 +6,16 @@ A standalone, open-source web portal for testing **Power Apps Canvas Power Fx** 
 
 ![Node](https://img.shields.io/badge/Node.js-20%2B-blue) ![.NET](https://img.shields.io/badge/.NET-8%20optional-purple) ![License](https://img.shields.io/badge/License-MIT-green)
 
+## Workbench UI (v0.3.0)
+
+The UI now follows the same **Fluent-inspired developer workbench** visual language as [Canvas App Visualizer](https://github.com/ECas95/canvas-app-visualizer), while remaining an independent repository and deployment.
+
+- Three-pane layout: searchable scenario explorer, syntax-highlighted formula editor and result inspector, context input/test/help inspector.
+- Canvas Power Fx and cloud-flow WDL mode switcher (no false interchangeability claims).
+- Dynamic JSON inputs, expected-output assertions, JSON/record-table results, run history, import/export.
+- Responsive layouts; keyboard shortcuts: `Ctrl/Cmd+Enter` to run, `/` to search examples, `Tab` for editor indentation.
+- Local-first, safe expression evaluation — no real connectors or Microsoft tenant actions.
+
 ## Quick start (no dependencies)
 
 ```bash
