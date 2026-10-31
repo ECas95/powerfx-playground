@@ -6,7 +6,7 @@ A standalone, open-source web portal for testing **Power Apps Canvas Power Fx** 
 
 ![Node](https://img.shields.io/badge/Node.js-20%2B-blue) ![.NET](https://img.shields.io/badge/.NET-8%20optional-purple) ![License](https://img.shields.io/badge/License-MIT-green)
 
-## Workbench UI (v0.3.0)
+## Workbench UI (v0.4.0)
 
 The UI now follows the same **Fluent-inspired developer workbench** visual language as [Canvas App Visualizer](https://github.com/ECas95/canvas-app-visualizer), while remaining an independent repository and deployment.
 
@@ -15,6 +15,15 @@ The UI now follows the same **Fluent-inspired developer workbench** visual langu
 - Dynamic JSON inputs, expected-output assertions, JSON/record-table results, run history, import/export.
 - Responsive layouts; keyboard shortcuts: `Ctrl/Cmd+Enter` to run, `/` to search examples, `Tab` for editor indentation.
 - Local-first, safe expression evaluation — no real connectors or Microsoft tenant actions.
+
+## New in v0.4.0 — large JSON inputs and realistic scenario library
+
+- **Resize JSON input fields vertically:** drag the bottom-right handle. Fields now start between 160 and 360 pixels tall based on their JSON contents, without a fixed maximum.
+- **Expand** beside any input opens a large editor with syntax-friendly monospaced formatting, JSON validation, and **Format JSON / Apply changes**. Use **Ctrl+Enter** to apply; **Esc** closes without applying. The expected-output JSON has the same expanded editor.
+- **39 executable scenarios** across Power Apps Canvas Power Fx and Power Automate cloud-flow WDL, grouped by business use case and searchable by title, formula or description; complexity filter: Basic / Intermediate / Advanced.
+- Scenarios include sales/CRM qualification, risk thresholds, backlog SLAs, inventory replenishment, invoice collections, shopping carts, multi-level approvals, retries, HTTP responses, JSON parsing and workflow outputs. All use synthetic records, not live connector data.
+- Every scenario has a tested **expected JSON output**. `tests/scenarios.test.js` checks parsing, required mock inputs and output assertions. The currently supported syntax is limited to the local evaluator subset; **these fixtures are not a claim of parity with Microsoft Power Fx or WDL**.
+- Switching examples or importing saved JSON now resets obsolete field DOM before rendering new mock values, preventing the previous scenario's inputs from leaking into the new scenario.
 
 ## Quick start (no dependencies)
 
@@ -47,7 +56,7 @@ POWERFX_NATIVE_URL=http://127.0.0.1:5196 npm start
 
 The Node application proxies Canvas evaluations to the native .NET service. **WDL continues to use the local bounded evaluator.** The dotnet service is optional and was included as a source integration; check its build status in GitHub Actions before deploying because native compilation cannot be validated in this distribution environment.
 
-## Current features (v0.2)
+## Current features (v0.4)
 
 - Responsive browser expression editor for Canvas and cloud flows.
 - Auto-detect top-level variables, `variables('name')`, `outputs('step')`, `body('step')`, `items('loop')`, `parameters('name')`, `triggerBody()`, etc.

@@ -14,7 +14,7 @@
     <header class="topbar">
       <a class="brand" href="./" aria-label="Power Fx Playground home">
         <span class="product-mark" aria-hidden="true"><span></span><span></span></span>
-        <span class="brand-copy"><strong>Power Fx Playground</strong><small>Expression workbench · v0.3</small></span>
+        <span class="brand-copy"><strong>Power Fx Playground</strong><small>Expression workbench · v0.4</small></span>
       </a>
       <div class="topbar-actions">
         <span class="local-chip" title="Expressions use mock inputs; no tenant connections"><span class="status-dot"></span>Local processing</span>
@@ -56,7 +56,7 @@
           <kbd>/</kbd>
         </label>
         <div class="explorer-scroll">
-          <div class="explorer-section-header"><span>EXAMPLE LIBRARY</span><span id="example-count" class="subtle-badge">7</span></div>
+          <div class="explorer-section-header"><span>EXAMPLE LIBRARY <span id="example-count" class="subtle-badge">39</span></span><select id="level-filter" aria-label="Filter by complexity"><option value="all">All levels</option><option value="Advanced">Advanced</option><option value="Intermediate">Intermediate</option><option value="Basic">Basic</option></select></div>
           <nav id="examples" class="example-list" aria-label="Example formulas"></nav>
           <div id="history" class="history-area">
             <div class="explorer-section-header"><span>RECENT RUNS</span><button id="clear-history" class="text-action" type="button" title="Clear local run history">Clear</button></div>
@@ -73,6 +73,7 @@
             <div class="editor-actions"><span id="formula-status" class="mini-status neutral">Not validated</span><button id="format-button" class="command-button" type="button" title="Trim outer whitespace">Tidy</button></div>
           </div>
           <div class="editor-caption"><span class="caption-dot"></span>EXPRESSION EDITOR <span class="caption-divider">/</span><span id="editor-syntax">Power Fx</span><span class="spacer"></span><span id="engine-label">Local compatibility evaluator</span></div>
+          <div class="scenario-strip"><span id="scenario-group" class="scenario-group">GETTING STARTED</span><span id="scenario-level" class="scenario-level">Basic</span><span id="scenario-description">Select a practical scenario from the library.</span></div>
           <div class="editor-surface" id="editor-surface">
             <div class="gutter" aria-hidden="true" id="editor-lines">1</div>
             <div class="code-layer">
@@ -100,7 +101,7 @@
         <div class="inspector-tabs" role="tablist" aria-label="Inspector panels"><button type="button" role="tab" class="active" data-tab="inputs" aria-selected="true">Inputs <span id="input-count" class="counter">0</span></button><button type="button" role="tab" data-tab="tests" aria-selected="false">Test</button><button type="button" role="tab" data-tab="help" aria-selected="false">Guide</button></div>
         <div class="inspector-content">
           <section class="inspector-pane" id="tab-inputs" role="tabpanel" aria-label="Input parameters">
-            <span class="panel-kicker">TEST CONTEXT</span><h2>Input parameters</h2><p class="inspector-description">Variables and outputs referenced in the formula appear here. Provide JSON values to simulate your environment.</p>
+            <span class="panel-kicker">TEST CONTEXT</span><h2>Input parameters</h2><p class="inspector-description">Variables and outputs referenced in the formula appear here. Drag the bottom-right corner to resize a JSON field, or use Expand for a full editor.</p>
             <div class="context-note"><span class="note-icon">{ }</span><span>Inputs are mock values, never live data sources.</span></div>
             <div id="input-fields" class="input-fields"></div>
             <button id="add-input" type="button" class="add-button"><span>+</span> Add custom input</button>
@@ -108,7 +109,7 @@
           </section>
           <section class="inspector-pane" id="tab-tests" role="tabpanel" aria-label="Expected output tests" hidden>
             <span class="panel-kicker">TEST CASE</span><h2>Expected output</h2><p class="inspector-description">Make this expression a repeatable test. Enter an expected JSON value to assert against the actual output.</p>
-            <label class="field-label" for="expected">EXPECTED JSON</label>
+            <div class="expected-header"><label class="field-label" for="expected">EXPECTED JSON</label><button type="button" id="expand-expected" class="input-expand">Expand</button></div>
             <textarea id="expected" class="expected-editor" spellcheck="false" placeholder='"High priority"'></textarea>
             <p class="input-hint">Examples: <code>150</code>, <code>true</code>, <code>"Hello"</code>, <code>[1,2,3]</code>. Leave blank to run without asserting.</p>
             <div class="panel-tip"><strong>How tests work</strong><p>Each run compares the returned value to the expected JSON using structural equality. Results appear in Output.</p></div>
@@ -123,7 +124,18 @@
         <div class="inspector-footer"><button id="import-button" type="button" class="command-button">Import scenario</button><button id="export-button" type="button" class="command-button">Export JSON</button><input id="scenario-file" type="file" accept=".json,application/json" hidden></div>
       </aside>
     </div>
-    <footer class="statusbar"><div><span class="ready-dot"></span><strong id="workspace-status">Ready</strong><span class="statusbar-divider"></span><span>Power Fx Playground v0.3.0</span></div><div><span>Open source · MIT</span><span class="statusbar-divider"></span><span>Independent of Canvas App Visualizer</span></div></footer>
+    <footer class="statusbar"><div><span class="ready-dot"></span><strong id="workspace-status">Ready</strong><span class="statusbar-divider"></span><span>Power Fx Playground v0.4.0</span></div><div><span>Open source · MIT</span><span class="statusbar-divider"></span><span>Independent of Canvas App Visualizer</span></div></footer>
   </div>
+  <dialog id="json-editor-dialog" class="json-editor-dialog" aria-labelledby="json-dialog-title">
+    <div class="json-modal-layout">
+      <header class="json-modal-header">
+        <div><span class="panel-kicker">JSON EDITOR</span><h2 id="json-dialog-title">Input</h2><p>Inspect, edit, format and validate large JSON payloads.</p></div>
+        <button id="json-editor-cancel" class="command-button" type="button" aria-label="Close JSON editor">Close</button>
+      </header>
+      <textarea id="json-modal-text" spellcheck="false" aria-label="Expanded JSON editor"></textarea>
+      <p id="json-modal-error" class="json-modal-error" role="alert" aria-live="polite"></p>
+      <footer class="json-modal-footer"><span>Ctrl+Enter to apply · Esc to cancel</span><div><button type="button" id="json-editor-format" class="command-button">Format JSON</button><button type="button" id="json-editor-save" class="primary-button">Apply changes</button></div></footer>
+    </div>
+  </dialog>
 </body>
 </html>

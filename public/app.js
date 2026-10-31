@@ -1,13 +1,4 @@
-const $ = id => document.getElementById(id);
-const examples = [
-  {name:'Conditional pricing',category:'Power Apps · Canvas',platform:'canvas',formula:'If(Amount >= 1000, "High priority", "Standard")',inputs:{Amount:1250},expected:'High priority'},
-  {name:'Filter a collection',category:'Power Apps · Canvas',platform:'canvas',formula:'Filter(Orders, ThisRecord.Status = "Open")',inputs:{Orders:[{Id:1,Status:'Open',Total:150},{Id:2,Status:'Closed',Total:90},{Id:3,Status:'Open',Total:230}]}},
-  {name:'LookUp by ID',category:'Power Apps · Canvas',platform:'canvas',formula:'LookUp(Orders, ThisRecord.Id = 2, ThisRecord.Total)',inputs:{Orders:[{Id:1,Total:100},{Id:2,Total:225}]}},
-  {name:'Sum a table',category:'Power Apps · Canvas',platform:'canvas',formula:'Sum(Orders, ThisRecord.Total)',inputs:{Orders:[{Total:25},{Total:75},{Total:60}]},expected:160},
-  {name:'Workflow variables',category:'Power Automate · WDL',platform:'flow',formula:"@concat('Hello ', variables('customerName'), '!')",inputs:{'variables:customerName':'Alex'},expected:'Hello Alex!'},
-  {name:'Trigger body',category:'Power Automate · WDL',platform:'flow',formula:"@if(greater(triggerBody()?['Amount'], 1000), 'Review', 'Approved')",inputs:{triggerbody:{Amount:1250}},expected:'Review'},
-  {name:'Action output',category:'Power Automate · WDL',platform:'flow',formula:"@outputs('Compose')?['body']?['Total']",inputs:{'outputs:Compose':{body:{Total:450}}},expected:450}
-];
+import {scenarios as examples} from './scenarios.js';
 const formatJSON = v => JSON.stringify(v,null,2);
 const parseVal = raw => JSON.parse(raw);
 let found=[],inputs={},lastResult=null,history=[],selectedExample=-1,resultView='json',tab='inputs',analyzeTimer;
@@ -55,14 +46,53 @@ function preserveInputs(){
     try{inputs[wrap.dataset.name]=parseVal(wrap.querySelector('textarea').value);}catch{}
   }
 }
+let modalTarget=null;
+function jsonLineHeight(raw){return Math.max(160,Math.min(360,raw.split('\n').length*17+34));}
+function editJson(field,name){
+  modalTarget=field;
+  $('json-dialog-title').textContent=name;
+  $('json-modal-text').value=field.value;
+  $('json-modal-error').textContent='';
+  $('json-editor-dialog').showModal();
+  $('json-modal-text').focus();
+}
+function closeJsonEditor(){
+  $('json-editor-dialog').close();
+  modalTarget=null;
+}
+function saveJsonEditor(){
+  try{
+    const value=parseVal($('json-modal-text').value);
+    const content=formatJSON(value);
+    if(!modalTarget||!modalTarget.isConnected){closeJsonEditor();return;}
+    modalTarget.value=content;
+    modalTarget.style.height=jsonLineHeight(content)+'px';
+    modalTarget.dispatchEvent(new Event('input',{bubbles:true}));
+    closeJsonEditor();workspaceStatus('JSON input updated');
+  }catch(error){$('json-modal-error').textContent='Invalid JSON: '+error.message;}
+}
+function formatJsonEditor(){
+  try{$('json-modal-text').value=formatJSON(parseVal($('json-modal-text').value));$('json-modal-error').textContent='';}
+  catch(error){$('json-modal-error').textContent='Invalid JSON: '+error.message;}
+}
 function addInputField(name,kind='variable'){
   const wrapper=document.createElement('div');wrapper.className='input-item';wrapper.dataset.name=name;
+  const header=document.createElement('div');header.className='input-item-header';
   const label=document.createElement('label');const key=document.createElement('span');key.textContent=name;
-  const type=document.createElement('em');type.textContent=kind;label.append(key,type);
-  const textarea=document.createElement('textarea');textarea.spellcheck=false;textarea.setAttribute('aria-label',`JSON input value for ${name}`);
+  const textarea=document.createElement('textarea');const fieldId=`json-field-${$('input-fields').children.length}`;
+  textarea.id=fieldId;label.htmlFor=fieldId;label.append(key);
+  const type=document.createElement('em');type.textContent=kind;
+  const expand=document.createElement('button');expand.type='button';expand.className='input-expand';
+  expand.textContent='Expand';expand.title=`Open large JSON editor for ${name}`;
+  expand.setAttribute('aria-label',`Expand JSON input ${name}`);
+  expand.addEventListener('click',()=>editJson(textarea,name));
+  const actions=document.createElement('div');actions.className='input-item-actions';actions.append(type,expand);
+  header.append(label,actions);
+  textarea.spellcheck=false;textarea.setAttribute('aria-label',`JSON input value for ${name}`);
   textarea.value=formatJSON(inputs[name]!==undefined?inputs[name]:kind.includes('body')||name==='triggerbody'?{}:kind==='variable'&&/orders|items|records|table/i.test(name)?[]:null);
+  textarea.style.height=jsonLineHeight(textarea.value)+'px';
   textarea.addEventListener('input',()=>{try{inputs[name]=parseVal(textarea.value);textarea.classList.remove('input-invalid');}catch{textarea.classList.add('input-invalid');}});
-  wrapper.append(label,textarea);$('input-fields').append(wrapper);
+  wrapper.append(header,textarea);$('input-fields').append(wrapper);
 }
 function renderInputs(){preserveInputs();$('input-fields').replaceChildren();for(const item of found)addInputField(item.key,item.kind);$('input-count').textContent=String(found.length);}
 let staticMode=location.hostname.endsWith('.github.io')||location.protocol==='file:';
@@ -133,27 +163,44 @@ function renderHistory(){
   if(!history.length){const p=document.createElement('p');p.className='empty-hint';p.textContent='No runs yet. Your recent formulas are saved here in this browser.';parent.append(p);return;}
   for(const item of history){const div=document.createElement('div');div.className='history-item';
     const button=document.createElement('button');button.type='button';button.textContent=item.formula;button.title='Load this execution';
-    button.addEventListener('click',async()=>{selectedExample=-1;inputs={...item.inputs};$('formula').value=item.formula;$('platform').value=item.platform;$('expected').value=item.expected===undefined?'':formatJSON(item.expected);setPlatform();updateEditor();renderExamples();await analyze(true);});
+    button.addEventListener('click',async()=>{selectedExample=-1;inputs={...item.inputs};$('formula').value=item.formula;$('input-fields').replaceChildren();$('platform').value=item.platform;$('expected').value=item.expected===undefined?'':formatJSON(item.expected);setPlatform();showScenarioDetails();updateEditor();renderExamples();await analyze(true);});
     const info=document.createElement('span');info.textContent=`${item.passed?'✓':'✕'} · ${new Date(item.time).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}`;
     div.append(button,info);parent.append(div);
   }
 }
 function renderExamples(){
-  const parent=$('examples');parent.replaceChildren();const filter=$('example-search').value.trim().toLowerCase();
-  const filtered=examples.map((sample,index)=>({...sample,index})).filter(e=>!filter||`${e.name} ${e.category} ${e.formula}`.toLowerCase().includes(filter));
+  const parent=$('examples');parent.replaceChildren();
+  const filter=$('example-search').value.trim().toLowerCase();const level=$('level-filter').value;
+  const filtered=examples.map((sample,index)=>({...sample,index})).filter(e=>
+    (!filter||`${e.name} ${e.group} ${e.level} ${e.description} ${e.formula}`.toLowerCase().includes(filter))&&
+    (level==='all'||e.level===level));
   $('example-count').textContent=String(filtered.length);
-  if(!filtered.length){const el=document.createElement('p');el.className='empty-search';el.textContent='No matching scenarios.';parent.append(el);return;}
+  if(!filtered.length){const el=document.createElement('p');el.className='empty-search';el.textContent='No matching scenarios. Try a different search or level.';parent.append(el);return;}
   for(const platform of ['canvas','flow']){
     const items=filtered.filter(s=>s.platform===platform);if(!items.length)continue;
     const group=document.createElement('div');group.className='example-group';group.dataset.platform=platform;
     const heading=document.createElement('div');heading.className='example-group-title';heading.textContent=platform==='canvas'?'Power Apps · Canvas':'Power Automate · Cloud';group.append(heading);
-    for(const example of items){const button=document.createElement('button');button.type='button';button.className='example-button'+(selectedExample===example.index?' active':'');button.setAttribute('aria-current',selectedExample===example.index?'true':'false');
-      const icon=document.createElement('span');icon.className='example-icon';icon.textContent=example.platform==='canvas'?'ƒx':'{ }';
-      const title=document.createElement('span');title.className='example-title';title.textContent=example.name;
-      button.append(icon,title);button.addEventListener('click',()=>loadExample(example));group.append(button);
+    const groups=new Map();
+    for(const example of items){if(!groups.has(example.group))groups.set(example.group,[]);groups.get(example.group).push(example);}
+    for(const [groupName,groupItems] of groups){
+      const category=document.createElement('div');category.className='example-category-heading';category.textContent=groupName;group.append(category);
+      for(const example of groupItems){
+        const button=document.createElement('button');button.type='button';button.className='example-button'+(selectedExample===example.index?' active':'');
+        button.setAttribute('aria-current',selectedExample===example.index?'true':'false');
+        button.title=example.description;
+        const icon=document.createElement('span');icon.className='example-icon';icon.textContent=example.platform==='canvas'?'ƒx':'{ }';
+        const title=document.createElement('span');title.className='example-title';title.textContent=example.name;
+        const levelBadge=document.createElement('span');levelBadge.className='example-level';levelBadge.textContent=example.level==='Advanced'?'Pro':example.level==='Intermediate'?'Mid':'Basic';
+        button.append(icon,title,levelBadge);button.addEventListener('click',()=>loadExample(example));group.append(button);
+      }
     }
     parent.append(group);
   }
+}
+function showScenarioDetails(example=null){
+  $('scenario-level').textContent=example?.level??'Custom';
+  $('scenario-description').textContent=example?.description??'Write or paste a formula, provide mock inputs, then execute it.';
+  $('scenario-group').textContent=example?.group??'CUSTOM EXPRESSION';
 }
 function setPlatform(){
   const canvas=$('platform').value==='canvas';
@@ -166,22 +213,23 @@ function setPlatform(){
   updateEditor();
 }
 async function loadExample(example){
-  selectedExample=example.index??examples.indexOf(example);inputs={...example.inputs};$('platform').value=example.platform;$('formula').value=example.formula;
-  $('expected').value=example.expected===undefined?'':formatJSON(example.expected);setPlatform();renderExamples();await analyze(true);
+  selectedExample=example.index??examples.indexOf(example);inputs=structuredClone(example.inputs);$('input-fields').replaceChildren();$('platform').value=example.platform;$('formula').value=example.formula;
+  $('expected').value=example.expected===undefined?'':formatJSON(example.expected);setPlatform();showScenarioDetails(example);renderExamples();await analyze(true);
   $('result-json').textContent='// Run an expression to inspect the return value.';
   $('result-type').textContent='—';$('result-time').textContent='—';$('assertion').textContent='—';status($('execution-status'),'Ready');
   $('error-detail').hidden=true;$('result-table').replaceChildren();selectResultView('json');activateTab('inputs');workspaceStatus('Scenario loaded');
 }
 async function init(){
   $('example-search').addEventListener('input',renderExamples);
+  $('level-filter').addEventListener('change',renderExamples);
   $('example-search').addEventListener('keydown',e=>{if(e.key==='Escape'){$('example-search').value='';renderExamples();}});
   document.querySelectorAll('[data-platform]').forEach(b=>b.addEventListener('click',async()=>{
     if($('platform').value===b.dataset.platform)return;
-    preserveInputs();selectedExample=-1;$('platform').value=b.dataset.platform;setPlatform();renderExamples();await analyze(true);
+    preserveInputs();selectedExample=-1;showScenarioDetails();$('platform').value=b.dataset.platform;setPlatform();renderExamples();await analyze(true);
   }));
   $('platform').addEventListener('change',async()=>{setPlatform();await analyze(true);});
   $('formula').addEventListener('input',()=>{
-    selectedExample=-1;updateEditor();renderExamples();status($('formula-status'),'Edited');workspaceStatus('Unsaved changes');
+    selectedExample=-1;showScenarioDetails();updateEditor();renderExamples();status($('formula-status'),'Edited');workspaceStatus('Unsaved changes');
     clearTimeout(analyzeTimer);analyzeTimer=setTimeout(()=>analyze(true),600);
   });
   $('formula').addEventListener('scroll',syncCodeScroll);
@@ -190,6 +238,12 @@ async function init(){
   });
   document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>activateTab(b.dataset.tab)));
   document.querySelectorAll('[data-result-view]').forEach(b=>b.addEventListener('click',()=>selectResultView(b.dataset.resultView)));
+  $('json-editor-cancel').onclick=closeJsonEditor;
+  $('json-editor-save').onclick=saveJsonEditor;
+  $('json-editor-format').onclick=formatJsonEditor;
+  $('expand-expected').onclick=()=>editJson($('expected'),'Expected output');
+  $('json-editor-dialog').addEventListener('close',()=>{modalTarget=null;});
+  $('json-modal-text').addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();saveJsonEditor();}});
   $('analyze-button').onclick=async()=>{const valid=await analyze();if(valid)activateTab('inputs');};
   $('run-button').onclick=run;
   $('add-input').onclick=()=>{const key=prompt('Input name (e.g. User, variables:count, outputs:Compose)');if(!key||key.length>120||['__proto__','constructor','prototype'].includes(key))return;preserveInputs();if(!found.some(x=>x.key===key))found.push({key,kind:'custom'});renderInputs();};
@@ -210,7 +264,7 @@ async function init(){
     const file=event.target.files?.[0];if(!file)return;
     try{if(file.size>1048576)throw new Error('Maximum file size is 1 MB');const scenario=JSON.parse(await file.text());
       if(!scenario||typeof scenario.formula!=='string'||!['canvas','flow'].includes(scenario.platform)||!scenario.inputs||typeof scenario.inputs!=='object'||Array.isArray(scenario.inputs))throw new Error('Invalid scenario format');
-      selectedExample=-1;inputs={...scenario.inputs};$('platform').value=scenario.platform;$('locale').value=scenario.locale==='es-ES'?'es-ES':'en-US';$('formula').value=scenario.formula;
+      selectedExample=-1;inputs=structuredClone(scenario.inputs);$('input-fields').replaceChildren();showScenarioDetails();$('platform').value=scenario.platform;$('locale').value=scenario.locale==='es-ES'?'es-ES':'en-US';$('formula').value=scenario.formula;
       $('expected').value=scenario.expected===undefined?'':formatJSON(scenario.expected);setPlatform();renderExamples();await analyze();activateTab('inputs');workspaceStatus('Scenario imported');
     }catch(error){showError('Import failed: '+error.message);}finally{event.target.value='';}
   });

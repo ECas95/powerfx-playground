@@ -22,3 +22,23 @@ test('Workbench supports keyboard-friendly inspector and output views',()=>{
   assert.match(html,/data-tab="help"/);
   assert.match(script,/event\.key==='Tab'/);
 });
+
+test('JSON input supports manual resizing and fullscreen editing',()=>{
+  for(const id of ['json-editor-dialog','json-modal-text','json-modal-error','json-editor-format','json-editor-save','json-editor-cancel','expand-expected']){
+    assert.match(html,new RegExp(`id="${id}"`),`Missing JSON editor control: ${id}`);
+  }
+  assert.match(styles,/\.input-item textarea\{min-height:150px;max-height:none;resize:vertical/);
+  assert.match(script,/function editJson\(field,name\)/);
+  assert.match(script,/function saveJsonEditor\(\)/);
+  assert.match(script,/JSON input updated/);
+});
+test('Scenario explorer includes use-case grouping and complexity filtering',()=>{
+  assert.match(html,/id="level-filter"/);
+  assert.match(html,/id="scenario-description"/);
+  assert.match(script,/import \{scenarios as examples\} from '\.\/scenarios\.js'/);
+  assert.match(script,/function showScenarioDetails\(/);
+});
+test('Scenario switching clears old field DOM before rendering selected inputs',()=>{
+  assert.match(script,/inputs=structuredClone\(example\.inputs\);\$\('input-fields'\)\.replaceChildren\(\)/);
+  assert.match(script,/inputs=structuredClone\(scenario\.inputs\);\$\('input-fields'\)\.replaceChildren\(\)/);
+});
