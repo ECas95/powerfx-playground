@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a1020">
+  <meta name="description" content="Power Fx Playground: valida y prueba expresiones Power Apps y Power Automate con datos simulados.">
+  <title>Power Fx Playground — Expression Lab</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" aria-label="Navegación">
+    <a class="brand" href="./" aria-label="Power Fx Playground">
+      <div class="brand-mark">ƒ<span>x</span></div>
+      <div><strong>Power Fx</strong><small>PLAYGROUND</small></div>
+    </a>
+    <div class="side-label">WORKSPACE</div>
+    <a href="#editor" class="nav active"><span>⌘</span> Expression editor</a>
+    <a href="#examples" class="nav"><span>▦</span> Examples library</a>
+    <a href="#history" class="nav"><span>◷</span> Recent executions</a>
+    <div class="side-label side-label-gap">QUICK START</div>
+    <div id="examples" class="example-list" aria-label="Ejemplos"></div>
+    <div class="sidebar-bottom">
+      <div class="info-dot"></div><div><b>Local-first sandbox</b><span>No live connectors, secrets or platform writes.</span></div>
+    </div>
+  </aside>
+  <main class="workspace">
+    <header class="topbar">
+      <div class="breadcrumb">Developer tools <span>/</span> Power Platform <span>/</span> <b>Expression Lab</b></div>
+      <div class="top-right"><span id="backend-pill" class="status-pill">● Checking engine...</span><a href="https://github.com/microsoft/Power-Fx" target="_blank" rel="noreferrer">Power Fx reference ↗</a></div>
+    </header>
+    <div class="content">
+      <div class="page-heading"><div><span class="eyebrow">FORMULA TESTING ENVIRONMENT</span><h1>Expression Lab <span class="version">v0.2</span></h1><p>Write, test, and debug Power Platform expressions without opening an app or flow.</p></div><div class="scenario-actions"><button id="import-button" class="quiet-button">↧ Import scenario</button><button id="export-button" class="quiet-button">↥ Export scenario</button><input id="scenario-file" type="file" accept=".json,application/json" hidden></div></div>
+      <div class="mode-bar"><div><label for="platform">PLATFORM</label><select id="platform"><option value="canvas">Power Apps · Canvas Power Fx</option><option value="flow">Power Automate · Cloud flow expressions</option></select></div><div><label for="locale">LOCALE</label><select id="locale"><option value="en-US">en-US (commas)</option><option value="es-ES">es-ES (semicolons)</option></select></div><div id="engine-label" class="engine-tag">Evaluator: Local compatibility subset</div></div>
+      <div class="columns">
+        <div class="primary-column">
+          <section id="editor" class="panel editor-panel"><div class="panel-header"><div><span class="panel-icon">⌘</span><strong>Formula editor</strong><span class="subtle">Expression</span></div><div class="panel-right"><span id="formula-status" class="mini-status neutral">Not validated</span><button id="format-button" class="icon-button" title="Eliminar espacios exteriores">Tidy</button></div></div><div class="editor-surface"><div class="gutter" aria-hidden="true">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8</div><textarea spellcheck="false" id="formula" aria-label="Fórmula Power Platform" placeholder="If(Amount > 1000, &quot;High priority&quot;, &quot;Standard&quot;)" autocomplete="off"></textarea></div><div class="editor-footer"><div id="editor-description">Power Fx expression</div><div><span id="characters">0</span> characters</div></div></section>
+          <div class="toolbar"><button id="analyze-button" class="secondary-button">⌕ Analyze inputs</button><button id="run-button" class="primary-button"><span>▶</span> Run expression <kbd>Ctrl ↵</kbd></button></div>
+          <section class="panel result-panel"><div class="panel-header"><div><span class="panel-icon alt">▤</span><strong>Execution result</strong></div><div class="panel-right"><span id="execution-status" class="mini-status neutral">Ready</span><button id="copy-result" class="icon-button">Copy JSON</button></div></div><div class="result-content"><div class="metric-row"><div><label>RESULT TYPE</label><strong id="result-type">—</strong></div><div><label>EXECUTION TIME</label><strong id="result-time">—</strong></div><div><label>TEST ASSERTION</label><strong id="assertion">—</strong></div></div><pre id="result-json" class="result-json">// Run an expression to see its output here.</pre><div id="result-table" class="result-table-wrap" hidden></div><p id="error-detail" class="error-detail" hidden></p></div></section>
+          <section id="history" class="panel history-panel"><div class="panel-header"><div><span class="panel-icon">◷</span><strong>Recent executions</strong></div><button id="clear-history" class="icon-button">Clear history</button></div><div class="history-content" id="history-items"><div class="empty-hint">No executions yet. Your runs appear here.</div></div></section>
+        </div>
+        <div class="secondary-column">
+          <section class="panel inputs-panel"><div class="panel-header"><div><span class="panel-icon input-icon">⇄</span><strong>Input parameters</strong></div><span id="input-count" class="counter">0 found</span></div><div class="inputs-body"><p class="panel-description">Referenced variables and workflow outputs are detected automatically. Enter test values as JSON.</p><div id="input-fields"></div><button id="add-input" class="add-button">+ Add custom input</button></div></section>
+          <section class="panel assertion-panel"><div class="panel-header"><div><span class="panel-icon">✓</span><strong>Expected output</strong></div></div><div class="inputs-body"><p class="panel-description">Optional assertion. Compare the actual result against a JSON value.</p><label class="field-label" for="expected">EXPECTED JSON</label><textarea id="expected" spellcheck="false" placeholder='"High priority"'></textarea><div class="hint">Leave blank to run without an assertion.</div></div></section>
+          <section class="tips-panel"><div class="tips-icon">✦</div><div><strong>How this sandbox works</strong><p>Power Apps runs on the local subset unless the official .NET engine is attached. Cloud flow expressions use a local WDL subset. Neither executes actions against your tenant.</p><a href="https://learn.microsoft.com/en-us/azure/logic-apps/expression-functions-reference" target="_blank" rel="noreferrer">Workflow function reference ↗</a></div></section>
+        </div>
+      </div>
+      <footer><span>Community project · MIT License</span><span>Independent from Canvas App Visualizer · No tenant connection</span></footer>
+    </div>
+  </main>
+</div>
+</body></html>

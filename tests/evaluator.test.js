@@ -1,0 +1,28 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {evaluate,inspect} from '../src/evaluator.js';
+const run=(platform,formula,inputs={})=>evaluate({platform,formula,inputs});
+test('Canvas conditional with variable',()=>assert.equal(run('canvas','If(Amount >= 1000, "High priority", "Standard")',{Amount:1250}).value,'High priority'));
+test('Canvas detects inputs',()=>assert.deepEqual(inspect({formula:'If(Amount>50, Name, "Low")'}).inputs.map(x=>x.key),['Amount','Name']));
+test('Canvas filter with row context',()=>assert.deepEqual(run('canvas','Filter(Orders, ThisRecord.Status = "Open")',{Orders:[{Status:'Open'},{Status:'Closed'}]}).value,[{Status:'Open'}]));
+test('Canvas lookup',()=>assert.equal(run('canvas','LookUp(Orders, ThisRecord.Id = 2, ThisRecord.Total)',{Orders:[{Id:1,Total:10},{Id:2,Total:28}]}).value,28));
+test('Canvas Sum table',()=>assert.equal(run('canvas','Sum(Orders, ThisRecord.Total)',{Orders:[{Total:4},{Total:5}]}).value,9));
+test('Canvas record literal',()=>assert.deepEqual(run('canvas','{Name: "Alex", Age: 30}').value,{Name:'Alex',Age:30}));
+test('Canvas string escaping',()=>assert.equal(run('canvas','"It" & " is " & "OK"').value,'It is OK'));
+test('Canvas laziness IF',()=>assert.equal(run('canvas','If(false, 1 / 0, 7)').value,7));
+test('Canvas semicolon separated args',()=>assert.equal(run('canvas','If(true; "Sí"; "No")').value,'Sí'));
+test('Canvas missing required input',()=>assert.throws(()=>run('canvas','Amount + 1'),/Inputs requeridos/));
+test('Flow concat variable',()=>assert.equal(run('flow',"@concat('Hello ', variables('customerName'), '!')",{'variables:customerName':'Alex'}).value,'Hello Alex!'));
+test('Flow triggerBody optional path',()=>assert.equal(run('flow',"@if(greater(triggerBody()?['Amount'],1000),'Review','Approved')",{triggerbody:{Amount:1250}}).value,'Review'));
+test('Flow outputs path',()=>assert.equal(run('flow',"@outputs('Compose')?['body']?['Total']",{'outputs:Compose':{body:{Total:450}}}).value,450));
+test('Flow equal function',()=>assert.equal(run('flow',"@equals(toLower('ABC'),'abc')").value,true));
+test('Flow detects workflow dependencies',()=>assert.deepEqual(inspect({platform:'flow',formula:"@concat(variables('x'), string(outputs('Step')?['body']))"}).inputs.map(x=>x.key),['variables:x','outputs:Step']));
+test('Assertion mismatched',()=>assert.equal(evaluate({formula:'1+1',expected:3}).assertion.passed,false));
+test('Safe member rejects prototype',()=>assert.throws(()=>run('flow',"@variables('x')['__proto__']",{'variables:x':{name:'A'}}),/no permitida/));
+test('No arbitrary JavaScript eval',()=>assert.throws(()=>run('flow','process.exit(1)'),/Inputs requeridos|Función/));
+test('Power Fx Blank null',()=>assert.equal(run('canvas','Coalesce(Blank(), 0, 5)').value,0));
+
+test('Power Automate optional chaining null',()=>assert.equal(run('flow',"@outputs('Compose')?['body']?['missing']",{'outputs:Compose':{body:{}}}).value,null));
+test('Canvas scoped bare column',()=>assert.deepEqual(run('canvas','Filter(Orders, Status = "Open")',{Orders:[{Status:'Open'},{Status:'Closed'}]}).value,[{Status:'Open'}]));
+test('Flow lazy condition ignores invalid branch',()=>assert.equal(run('flow',"@if(false, div(3,0), 'safe')").value,'safe'));
+test('Flow null coalesce',()=>assert.equal(run('flow',"@coalesce(variables('x'), 'fallback')",{'variables:x':null}).value,'fallback'));
