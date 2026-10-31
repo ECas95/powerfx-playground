@@ -1,4 +1,5 @@
 import {scenarios as examples} from './scenarios.js';
+const $ = id => document.getElementById(id);
 const formatJSON = v => JSON.stringify(v,null,2);
 const parseVal = raw => JSON.parse(raw);
 let found=[],inputs={},lastResult=null,history=[],selectedExample=-1,resultView='json',tab='inputs',analyzeTimer;
@@ -220,6 +221,9 @@ async function loadExample(example){
   $('error-detail').hidden=true;$('result-table').replaceChildren();selectResultView('json');activateTab('inputs');workspaceStatus('Scenario loaded');
 }
 async function init(){
+  // Render the library first; later initialization errors must not hide samples.
+  renderExamples();
+  window.__powerFxWorkbenchReady = true;
   $('example-search').addEventListener('input',renderExamples);
   $('level-filter').addEventListener('change',renderExamples);
   $('example-search').addEventListener('keydown',e=>{if(e.key==='Escape'){$('example-search').value='';renderExamples();}});
@@ -279,4 +283,12 @@ async function init(){
     $('engine-label').textContent=config.nativeCanvas?'Microsoft Power Fx SDK + local WDL':'Local compatibility subsets';
   }catch{$('backend-pill').textContent='● Server unavailable';}
 }
-init();
+init().catch(error => {
+  console.error('Power Fx Playground failed to initialize:',error);
+  const container=document.getElementById('examples');
+  if(!window.__powerFxWorkbenchReady && container){
+    const message=document.createElement('p');message.className='empty-hint load-failure';
+    message.textContent='The scenario library could not initialize. Refresh the page to retry.';
+    container.replaceChildren(message);
+  }
+});

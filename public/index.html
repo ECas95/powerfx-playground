@@ -7,7 +7,7 @@
   <meta name="description" content="Power Fx Playground — a focused, local-first formula workbench for Canvas Power Fx and Power Automate expressions.">
   <title>Power Fx Playground · Expression Workbench</title>
   <link rel="stylesheet" href="./styles.css">
-  <script type="module" src="./app.js"></script>
+  <script defer src="./workbench.js?v=0.4.1"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -56,8 +56,8 @@
           <kbd>/</kbd>
         </label>
         <div class="explorer-scroll">
-          <div class="explorer-section-header"><span>EXAMPLE LIBRARY <span id="example-count" class="subtle-badge">39</span></span><select id="level-filter" aria-label="Filter by complexity"><option value="all">All levels</option><option value="Advanced">Advanced</option><option value="Intermediate">Intermediate</option><option value="Basic">Basic</option></select></div>
-          <nav id="examples" class="example-list" aria-label="Example formulas"></nav>
+          <div class="explorer-section-header"><span>EXAMPLE LIBRARY <span id="example-count" class="subtle-badge">—</span></span><select id="level-filter" aria-label="Filter by complexity"><option value="all">All levels</option><option value="Advanced">Advanced</option><option value="Intermediate">Intermediate</option><option value="Basic">Basic</option></select></div>
+          <nav id="examples" class="example-list" aria-label="Example formulas"><p class="empty-hint">Loading examples…</p></nav>
           <div id="history" class="history-area">
             <div class="explorer-section-header"><span>RECENT RUNS</span><button id="clear-history" class="text-action" type="button" title="Clear local run history">Clear</button></div>
             <div id="history-items" class="history-items"><p class="empty-hint">Nothing here yet. Executions will be saved locally.</p></div>
@@ -124,7 +124,7 @@
         <div class="inspector-footer"><button id="import-button" type="button" class="command-button">Import scenario</button><button id="export-button" type="button" class="command-button">Export JSON</button><input id="scenario-file" type="file" accept=".json,application/json" hidden></div>
       </aside>
     </div>
-    <footer class="statusbar"><div><span class="ready-dot"></span><strong id="workspace-status">Ready</strong><span class="statusbar-divider"></span><span>Power Fx Playground v0.4.0</span></div><div><span>Open source · MIT</span><span class="statusbar-divider"></span><span>Independent of Canvas App Visualizer</span></div></footer>
+    <footer class="statusbar"><div><span class="ready-dot"></span><strong id="workspace-status">Ready</strong><span class="statusbar-divider"></span><span>Power Fx Playground v0.4.1</span></div><div><span>Open source · MIT</span><span class="statusbar-divider"></span><span>Independent of Canvas App Visualizer</span></div></footer>
   </div>
   <dialog id="json-editor-dialog" class="json-editor-dialog" aria-labelledby="json-dialog-title">
     <div class="json-modal-layout">
@@ -137,5 +137,6 @@
       <footer class="json-modal-footer"><span>Ctrl+Enter to apply · Esc to cancel</span><div><button type="button" id="json-editor-format" class="command-button">Format JSON</button><button type="button" id="json-editor-save" class="primary-button">Apply changes</button></div></footer>
     </div>
   </dialog>
+  <script defer src="./boot-guard.js?v=0.4.1"></script>
 </body>
 </html>

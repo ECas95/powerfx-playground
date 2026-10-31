@@ -6,7 +6,7 @@ A standalone, open-source web portal for testing **Power Apps Canvas Power Fx** 
 
 ![Node](https://img.shields.io/badge/Node.js-20%2B-blue) ![.NET](https://img.shields.io/badge/.NET-8%20optional-purple) ![License](https://img.shields.io/badge/License-MIT-green)
 
-## Workbench UI (v0.4.0)
+## Workbench UI (v0.4.1)
 
 The UI now follows the same **Fluent-inspired developer workbench** visual language as [Canvas App Visualizer](https://github.com/ECas95/canvas-app-visualizer), while remaining an independent repository and deployment.
 
@@ -16,7 +16,7 @@ The UI now follows the same **Fluent-inspired developer workbench** visual langu
 - Responsive layouts; keyboard shortcuts: `Ctrl/Cmd+Enter` to run, `/` to search examples, `Tab` for editor indentation.
 - Local-first, safe expression evaluation — no real connectors or Microsoft tenant actions.
 
-## New in v0.4.0 — large JSON inputs and realistic scenario library
+## New in v0.4.1 — large JSON inputs and realistic scenario library
 
 - **Resize JSON input fields vertically:** drag the bottom-right handle. Fields now start between 160 and 360 pixels tall based on their JSON contents, without a fixed maximum.
 - **Expand** beside any input opens a large editor with syntax-friendly monospaced formatting, JSON validation, and **Format JSON / Apply changes**. Use **Ctrl+Enter** to apply; **Esc** closes without applying. The expected-output JSON has the same expanded editor.
@@ -186,3 +186,9 @@ Then optionally configure GitHub Pages/static deployment **only for the UI if an
 - [Power Fx locale rules](https://learn.microsoft.com/en-us/power-platform/power-fx/global)
 
 This is a community project and is not affiliated with or endorsed by Microsoft.
+
+## Browser startup reliability (v0.4.1)
+
+The 39 scenarios are now compiled with the workbench into a single browser script (`public/workbench.js`) via `npm run build:client`, eliminating a separate ES-module load before scenario rendering. The app renders the scenario explorer before asynchronous checks; the boot guard reports failures instead of leaving a silent empty panel. The previous missing DOM helper was fixed. The regression test uses an isolated DOM simulation to confirm all scenario buttons render at boot.
+
+When editing `public/app.js` or `public/scenarios.js`, regenerate the browser bundle (`npm run build:client`). The `npm test` command verifies bundle freshness.
