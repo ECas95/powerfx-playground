@@ -6,7 +6,20 @@ A standalone, open-source web portal for testing **Power Apps Canvas Power Fx** 
 
 ![Node](https://img.shields.io/badge/Node.js-20%2B-blue) ![.NET](https://img.shields.io/badge/.NET-8%20optional-purple) ![License](https://img.shields.io/badge/License-MIT-green)
 
-## Workbench UI (v0.4.1)
+## Advanced Power Fx coverage (v0.6.0)
+
+The next milestone introduces **81 runnable mock scenarios** (Canvas + cloud-flow WDL), 43 advanced semantics tests, and a catalog coverage test ensuring **every runnable function listed in the interactive reference has an exercised path**. This is **not full Power Fx language or runtime coverage**.
+
+- Added `With` record scopes, nested scopes and alias `As`, including `With(Match(...))`.
+- Added `Trace(message, TraceSeverity, CustomRecord)` simulation and a dedicated trace-event panel. **No** telemetry is sent to Live Monitor or Application Insights; in real Canvas apps, `Trace` is behavior-only.
+- Added `IsMatch`, `Match`, `MatchAll`, named regex captures, match options and stringent local input/pattern bounds; JS compatibility is intentionally narrower than Microsoft Power Fx regex.
+- Added multi-predicate `Filter`, nested correlated `CountIf`, table `AddColumns`, `Distinct`, `Search`, `ShowColumns`, `DropColumns`, `Sequence`, `Index`, and `IsEmpty`.
+- Enabled local function catalog and editor completion, JSON tree output, CSV export with spreadsheet-formula escaping and batch regression suites.
+- Added regression coverage for formula error paths and unsupported regex syntax.
+
+**[Full compatibility matrix and prioritized gaps](docs/FUNCTION_COVERAGE.md)** · [Microsoft Power Fx function reference](https://learn.microsoft.com/en-us/power-platform/power-fx/formula-reference-canvas-apps).
+
+## Workbench UI (v0.6.0)
 
 The UI now follows the same **Fluent-inspired developer workbench** visual language as [Canvas App Visualizer](https://github.com/ECas95/canvas-app-visualizer), while remaining an independent repository and deployment.
 
@@ -20,7 +33,7 @@ The UI now follows the same **Fluent-inspired developer workbench** visual langu
 
 - **Resize JSON input fields vertically:** drag the bottom-right handle. Fields now start between 160 and 360 pixels tall based on their JSON contents, without a fixed maximum.
 - **Expand** beside any input opens a large editor with syntax-friendly monospaced formatting, JSON validation, and **Format JSON / Apply changes**. Use **Ctrl+Enter** to apply; **Esc** closes without applying. The expected-output JSON has the same expanded editor.
-- **39 executable scenarios** across Power Apps Canvas Power Fx and Power Automate cloud-flow WDL, grouped by business use case and searchable by title, formula or description; complexity filter: Basic / Intermediate / Advanced.
+- **81 executable scenarios** across Power Apps Canvas Power Fx and Power Automate cloud-flow WDL, grouped by business use case and searchable by title, formula or description; complexity filter: Basic / Intermediate / Advanced.
 - Scenarios include sales/CRM qualification, risk thresholds, backlog SLAs, inventory replenishment, invoice collections, shopping carts, multi-level approvals, retries, HTTP responses, JSON parsing and workflow outputs. All use synthetic records, not live connector data.
 - Every scenario has a tested **expected JSON output**. `tests/scenarios.test.js` checks parsing, required mock inputs and output assertions. The currently supported syntax is limited to the local evaluator subset; **these fixtures are not a claim of parity with Microsoft Power Fx or WDL**.
 - Switching examples or importing saved JSON now resets obsolete field DOM before rendering new mock values, preventing the previous scenario's inputs from leaking into the new scenario.
@@ -56,21 +69,21 @@ POWERFX_NATIVE_URL=http://127.0.0.1:5196 npm start
 
 The Node application proxies Canvas evaluations to the native .NET service. **WDL continues to use the local bounded evaluator.** The dotnet service is optional and was included as a source integration; check its build status in GitHub Actions before deploying because native compilation cannot be validated in this distribution environment.
 
-## Current features (v0.4)
+## Core features (v0.6)
 
 - Responsive browser expression editor for Canvas and cloud flows.
 - Auto-detect top-level variables, `variables('name')`, `outputs('step')`, `body('step')`, `items('loop')`, `parameters('name')`, `triggerBody()`, etc.
 - Editable mock inputs supplied as JSON, including records, tables, strings, numbers, arrays, booleans and nulls.
 - Structured result, type, execution time, and table preview for arrays of records.
 - Optional JSON expected-value assertion (pass/fail).
-- Seven runnable examples; expression history stored **only in the browser's localStorage**; import/export scenarios as JSON.
+- 81 runnable examples; expression history stored **only in the browser's localStorage**; import/export scenarios as JSON.
 - Keyboard shortcut **Ctrl+Enter** to execute.
 - Unit test suite (`npm test`), GitHub Actions Node test + .NET build.
 - Node host uses no third-party runtime packages. No `eval`, `new Function`, arbitrary JS or network connector execution in the evaluation layer.
 
 ### Implemented local Canvas subset
 
-`If`, `IfError`, `Switch`, `Blank`, `IsBlank`, `IsBlankOrError`, `Coalesce`, `Filter`, `LookUp`, `CountIf`, `ForAll`, `Sum`, `Average`, `Min`, `Max`, `CountRows`, `First`, `Last`, `FirstN`, `LastN`, `Sort`, `Table`, `Len`, `Left`, `Right`, `Mid`, `Trim`, `Lower`, `Upper`, `Value`, `Text`, `Substitute`, `Concatenate`, `Round`, plus selected operators, record/table literals, and dot notation. **Not all Canvas semantics are replicated**, especially connectors, scoping, delegation, side effects, locale-specific decimals, and identifiers inferred within row scopes.
+`With`, `Trace` (simulated), `IsMatch`, `Match`, `MatchAll`, `StartsWith`, `EndsWith`, `AddColumns`, `Distinct`, `Search`, `ShowColumns`, `DropColumns`, `Sequence`, `Index`, `IsEmpty`, `If`, `IfError`, `Switch`, `Blank`, `IsBlank`, `IsBlankOrError`, `Coalesce`, `Filter`, `LookUp`, `CountIf`, `ForAll`, `Sum`, `Average`, `Min`, `Max`, `CountRows`, `First`, `Last`, `FirstN`, `LastN`, `Sort`, `Table`, `Len`, `Left`, `Right`, `Mid`, `Trim`, `Lower`, `Upper`, `Value`, `Text`, `Substitute`, `Concatenate`, `Round`, plus selected operators, record/table literals, and dot notation. **Not all Canvas semantics are replicated**, especially connectors, scoping, delegation, side effects, locale-specific decimals, and identifiers inferred within row scopes.
 
 ### Implemented local flow subset
 
@@ -189,6 +202,6 @@ This is a community project and is not affiliated with or endorsed by Microsoft.
 
 ## Browser startup reliability (v0.4.1)
 
-The 39 scenarios are now compiled with the workbench into a single browser script (`public/workbench.js`) via `npm run build:client`, eliminating a separate ES-module load before scenario rendering. The app renders the scenario explorer before asynchronous checks; the boot guard reports failures instead of leaving a silent empty panel. The previous missing DOM helper was fixed. The regression test uses an isolated DOM simulation to confirm all scenario buttons render at boot.
+The 81 scenarios are now compiled with the workbench into a single browser script (`public/workbench.js`) via `npm run build:client`, eliminating a separate ES-module load before scenario rendering. The app renders the scenario explorer before asynchronous checks; the boot guard reports failures instead of leaving a silent empty panel. The previous missing DOM helper was fixed. The regression test uses an isolated DOM simulation to confirm all scenario buttons render at boot.
 
 When editing `public/app.js` or `public/scenarios.js`, regenerate the browser bundle (`npm run build:client`). The `npm test` command verifies bundle freshness.

@@ -82,10 +82,204 @@ const scenarios = [
   {id:'flow-http',name:'Classify HTTP response',group:'Integration & APIs',level:'Intermediate',platform:'flow',description:'Flag status codes of 400 and above as failed after an API write.',formula:"@if(greaterOrEquals(int(outputs('HTTP_Create')?['statusCode']), 400), 'Failed', 'Created')",inputs:{'outputs:HTTP_Create':{statusCode:422,body:{error:'Validation',details:{field:'Email',reason:'Required'}}}},expected:'Failed'},
   {id:'flow-json',name:'Parse order payload JSON',group:'Integration & APIs',level:'Advanced',platform:'flow',description:'Deserialize a JSON string stored in a workflow variable to inspect its structured payload.',formula:"@json(variables('OrderPayloadJson'))",inputs:{'variables:OrderPayloadJson':JSON.stringify({orderId:'ORD-7182',customer:{id:'C-104',country:'PE'},lines:[{sku:'A1',qty:2},{sku:'B5',qty:1}],shipPriority:true})},expected:{orderId:'ORD-7182',customer:{id:'C-104',country:'PE'},lines:[{sku:'A1',qty:2},{sku:'B5',qty:1}],shipPriority:true}},
   {id:'flow-lastapproval',name:'Last approval response',group:'Approvals & SLAs',level:'Advanced',platform:'flow',description:'Extract the final decision from a collection returned by an approval connector.',formula:"@last(outputs('Get_approvals')?['body']?['responses'])",inputs:{'outputs:Get_approvals':{body:{responses:[{approver:'analyst@contoso.example',decision:'Approve',comments:'Validated'},{approver:'director@contoso.example',decision:'Approve',comments:'Proceed'}]}}},expected:{approver:'director@contoso.example',decision:'Approve',comments:'Proceed'}},
-  {id:'flow-first',name:'First matching Dataverse row',group:'Integration & APIs',level:'Intermediate',platform:'flow',description:'Read the email from the first record returned by a List rows action.',formula:"@first(outputs('List_rows')?['body']?['value'])?['Email']",inputs:{'outputs:List_rows':{body:{value:[{Id:1,Email:'owner@contoso.example',Status:'Active'},{Id:2,Email:'backup@contoso.example',Status:'Active'}]}}},expected:'owner@contoso.example'}
+  {id:'flow-first',name:'First matching Dataverse row',group:'Integration & APIs',level:'Intermediate',platform:'flow',description:'Read the email from the first record returned by a List rows action.',formula:"@first(outputs('List_rows')?['body']?['value'])?['Email']",inputs:{'outputs:List_rows':{body:{value:[{Id:1,Email:'owner@contoso.example',Status:'Active'},{Id:2,Email:'backup@contoso.example',Status:'Active'}]}}},expected:'owner@contoso.example'},
+
+  // v0.5: curated, executable enterprise scenarios with transparent mock context.
+  {id:'canvas-vip-orders',name:'Prioritize open orders by value',group:'Sales & CRM',level:'Advanced',platform:'canvas',description:'Identify orders over the escalation threshold, then sort by order total for the sales queue.',formula:'Sort(Filter(Orders, Status = "Open" And Total >= 300), Total, "Descending")',inputs:{Orders:[{Id:'SO-102',Status:'Open',Total:520,Customer:'Fabrikam'},{Id:'SO-104',Status:'Closed',Total:1100,Customer:'Northwind'},{Id:'SO-105',Status:'Open',Total:370,Customer:'Contoso'},{Id:'SO-107',Status:'Open',Total:90,Customer:'Litware'}]},expected:[{Id:'SO-102',Status:'Open',Total:520,Customer:'Fabrikam'},{Id:'SO-105',Status:'Open',Total:370,Customer:'Contoso'}]},
+  {id:'canvas-route-leads',name:'Score qualified leads',group:'Sales & CRM',level:'Advanced',platform:'canvas',description:'Transform a qualified CRM list into a follow-up queue classified as Hot or Warm.',formula:'ForAll(Filter(Leads, Score >= 70), {Email:ThisRecord.Email,Priority:If(ThisRecord.Score >= 90, "Hot", "Warm")})',inputs:{Leads:[{Email:'a@contoso.example',Score:95},{Email:'b@fabrikam.example',Score:75},{Email:'c@northwind.example',Score:42}]},expected:[{Email:'a@contoso.example',Priority:'Hot'},{Email:'b@fabrikam.example',Priority:'Warm'}]},
+  {id:'canvas-overdue-count',name:'Count active SLA breaches',group:'Support & SLAs',level:'Advanced',platform:'canvas',description:'Count active critical incidents requiring immediate escalation.',formula:'CountIf(Tickets, Priority = "Critical" And Status <> "Closed")',inputs:{Tickets:[{Id:'INC-101',Priority:'Critical',Status:'Open'},{Id:'INC-102',Priority:'Normal',Status:'Open'},{Id:'INC-103',Priority:'Critical',Status:'Closed'},{Id:'INC-104',Priority:'Critical',Status:'Pending'}]},expected:2},
+  {id:'canvas-pipeline-value',name:'Forecast weighted pipeline',group:'Reporting & KPIs',level:'Advanced',platform:'canvas',description:'Calculate expected revenue for open opportunities from deal amounts and win probability.',formula:'Round(Sum(Filter(Deals, Stage <> "Closed Lost"), Amount * Probability), 2)',inputs:{Deals:[{Stage:'Qualified',Amount:5000,Probability:0.3},{Stage:'Proposal',Amount:6000,Probability:0.6},{Stage:'Closed Lost',Amount:8000,Probability:0.9}]},expected:5100},
+  {id:'canvas-shortstock',name:'Warehouse stockout queue',group:'Operations & inventory',level:'Advanced',platform:'canvas',description:'Show items requiring replenishment where available inventory has fallen below reorder point.',formula:'Filter(Stock, OnHand - Reserved <= ReorderPoint And SupplierStatus = "Active")',inputs:{Stock:[{Sku:'A100',OnHand:10,Reserved:7,ReorderPoint:5,SupplierStatus:'Active'},{Sku:'B200',OnHand:20,Reserved:3,ReorderPoint:8,SupplierStatus:'Active'},{Sku:'C300',OnHand:2,Reserved:0,ReorderPoint:4,SupplierStatus:'Paused'}]},expected:[{Sku:'A100',OnHand:10,Reserved:7,ReorderPoint:5,SupplierStatus:'Active'}]},
+  {id:'canvas-returns',name:'Return authorization decision',group:'Operations & inventory',level:'Intermediate',platform:'canvas',description:'Grant a return only when the item is unopened and within the return window.',formula:'If(ReturnRequest.DaysSinceDelivery <= 30 And ReturnRequest.Sealed, "RMA approved", "Manual review")',inputs:{ReturnRequest:{OrderId:'ORD-227',DaysSinceDelivery:12,Sealed:true,Channel:'Online'}},expected:'RMA approved'},
+  {id:'canvas-risks',name:'Project risk register',group:'Reporting & KPIs',level:'Advanced',platform:'canvas',description:'Generate a compact project risk summary from high-impact items.',formula:'ForAll(Filter(Risks, Impact * Likelihood >= 12), {Risk:ThisRecord.Name,Exposure:ThisRecord.Impact * ThisRecord.Likelihood})',inputs:{Risks:[{Name:'Vendor delay',Impact:5,Likelihood:3},{Name:'Data loss',Impact:5,Likelihood:1},{Name:'License lapse',Impact:4,Likelihood:4}]},expected:[{Risk:'Vendor delay',Exposure:15},{Risk:'License lapse',Exposure:16}]},
+  {id:'canvas-customer-ltv',name:'Customer purchase total',group:'Finance',level:'Advanced',platform:'canvas',description:'Compute recognized customer revenue excluding cancelled orders.',formula:'Sum(Filter(Transactions, Status = "Paid"), NetAmount)',inputs:{Transactions:[{Invoice:'I-1',Status:'Paid',NetAmount:900},{Invoice:'I-2',Status:'Cancelled',NetAmount:1300},{Invoice:'I-3',Status:'Paid',NetAmount:420}]},expected:1320},
+  {id:'flow-vendor-approval',name:'Route vendor due diligence',group:'Approvals & SLAs',level:'Advanced',platform:'flow',description:'Escalate a cross-border supplier with elevated annual spend to compliance.',formula:"@if(and(equals(toLower(triggerBody()?['Country']), 'us'), greater(float(triggerBody()?['AnnualSpend']), 50000)), 'Compliance', 'Procurement')",inputs:{triggerbody:{SupplierId:'V-401',Country:'US',AnnualSpend:'72000',RiskScore:62}},expected:'Compliance'},
+  {id:'flow-idempotency',name:'Detect duplicate webhook event',group:'Integration & APIs',level:'Advanced',platform:'flow',description:'Check a webhook event ID against previously processed event IDs before creating a new record.',formula:"@if(contains(outputs('Check_processed')?['body']?['eventIds'], triggerBody()?['eventId']), 'SKIP', 'PROCESS')",inputs:{triggerbody:{eventId:'evt_8831',eventType:'payment.succeeded'},'outputs:Check_processed':{body:{eventIds:['evt_7710','evt_8831']}}},expected:'SKIP'},
+  {id:'flow-fulfillment',name:'Decide order fulfillment channel',group:'Operations & inventory',level:'Advanced',platform:'flow',description:'Route ecommerce fulfillment according to warehouse availability and courier service limits.',formula:"@if(and(greaterOrEquals(int(outputs('Warehouse')?['body']?['available']), int(triggerBody()?['quantity'])), lessOrEquals(int(triggerBody()?['distanceKm']), 50)), 'Local delivery', 'Transfer required')",inputs:{triggerbody:{orderId:'O-5008',quantity:4,distanceKm:35},'outputs:Warehouse':{body:{location:'LIM-1',available:7}}},expected:'Local delivery'},
+  {id:'flow-billing-fallback',name:'Invoice billing email fallback',group:'Finance & billing',level:'Intermediate',platform:'flow',description:'Prefer billing contact, then account contact, then a monitored shared mailbox.',formula:"@coalesce(outputs('Get_account')?['body']?['billingEmail'], outputs('Get_account')?['body']?['contactEmail'], 'billing@contoso.example')",inputs:{'outputs:Get_account':{body:{accountId:'AC-130',billingEmail:null,contactEmail:'ap@northwind.example'}}},expected:'ap@northwind.example'},
+  {id:'flow-incident-message',name:'Format incident notification',group:'Notifications',level:'Advanced',platform:'flow',description:'Prepare an operations alert with an incident identifier, team, and current priority.',formula:"@concat('Incident ', string(triggerBody()?['IncidentId']), ' | ', toUpper(triggerBody()?['Priority']), ' | ', coalesce(triggerBody()?['Team'], 'unassigned'))",inputs:{triggerbody:{IncidentId:27412,Priority:'p1',Team:'Platform Engineering'}},expected:'Incident 27412 | P1 | Platform Engineering'},
+  {id:'flow-payment-status',name:'Reconcile payment webhook',group:'Finance & billing',level:'Advanced',platform:'flow',description:'Recognize successful provider acknowledgements for payment events.',formula:"@if(and(greaterOrEquals(int(outputs('Payment_API')?['statusCode']), 200), less(int(outputs('Payment_API')?['statusCode']), 300)), 'ACK', 'RETRY')",inputs:{'outputs:Payment_API':{statusCode:201,body:{paymentId:'pay_8021',state:'confirmed'}}},expected:'ACK'},
+  {id:'flow-project-slug',name:'Create stable project identifier',group:'Data transformation',level:'Intermediate',platform:'flow',description:'Generate a normalized project key from business unit and request number.',formula:"@concat(toUpper(trim(triggerBody()?['BusinessUnit'])), '-', string(triggerBody()?['RequestNo']))",inputs:{triggerbody:{BusinessUnit:' ops ',RequestNo:3052,Title:'Fleet migration'}},expected:'OPS-3052'},
+  {id:'flow-daily-kpis',name:'Daily KPI health classification',group:'Reporting & KPIs',level:'Advanced',platform:'flow',description:'Classify whether the daily success ratio stays above the configured minimum.',formula:"@if(greaterOrEquals(div(float(outputs('Summary')?['body']?['Succeeded']), float(outputs('Summary')?['body']?['Total'])), float(parameters('TargetRate'))), 'On track', 'Investigate')",inputs:{'outputs:Summary':{body:{Succeeded:97,Total:100}},'parameters:TargetRate':0.95},expected:'On track'},
+
+  // v0.6: advanced Power Fx semantics and edge-case coverage.
+  {"id":"canvas-with-tax","name":"With: quote + VAT","group":"Finance & billing","level":"Advanced","platform":"canvas","description":"Scoped calculation of subtotal and VAT without repeated formulas.","formula":"With({Subtotal:Price*Quantity,VAT:0.18},Round(Subtotal*(1+VAT),2))","inputs":{"Price":125,"Quantity":4},"expected":590},
+  {"id":"canvas-with-nested","name":"With: nested interest","group":"Finance & billing","level":"Advanced","platform":"canvas","description":"Nested lexical scopes for a monthly interest allocation.","formula":"With({Rate:0.12,Principal:8000},With({Months:12},Round(Principal*Rate/Months,2)))","inputs":{},"expected":80},
+  {"id":"canvas-with-shadow","name":"With: scope shadowing","group":"Developer diagnostics","level":"Advanced","platform":"canvas","description":"Verify inner record scopes shadow outer names.","formula":"With({Priority:\"Low\"},With({Priority:\"High\"},Priority))","inputs":{},"expected":"High"},
+  {"id":"canvas-regex-email","name":"IsMatch: email verification","group":"Validation & regex","level":"Advanced","platform":"canvas","description":"Validate email-like input using Power Fx Match.Email preset.","formula":"IsMatch(CustomerEmail,Match.Email)","inputs":{"CustomerEmail":"billing@contoso.example"},"expected":true},
+  {"id":"canvas-regex-code","name":"IsMatch: inventory code","group":"Validation & regex","level":"Advanced","platform":"canvas","description":"Enforce warehouse location and four-digit product ID format.","formula":"IsMatch(Sku,\"[A-Z]{3}-\\d{4}\")","inputs":{"Sku":"LIM-3012"},"expected":true},
+  {"id":"canvas-regex-ignorecase","name":"IsMatch: case-insensitive ticket","group":"Validation & regex","level":"Advanced","platform":"canvas","description":"Verify case-insensitive ticket format in a constant pattern.","formula":"IsMatch(Ticket,\"inc-\\d{4}\",MatchOptions.IgnoreCase)","inputs":{"Ticket":"INC-2048"},"expected":true},
+  {"id":"canvas-regex-named","name":"Match: invoice extraction","group":"Validation & regex","level":"Advanced","platform":"canvas","description":"Extract named groups and one-based starting index from invoice description.","formula":"Match(InvoiceText,\"INV-(?<year>\\d{4})-(?<number>\\d{3})\")","inputs":{"InvoiceText":"Paid invoice INV-2026-091 on file"},"expected":{"FullMatch":"INV-2026-091","StartMatch":14,"year":"2026","number":"091"}},
+  {"id":"canvas-regex-all","name":"MatchAll: extract serial numbers","group":"Validation & regex","level":"Advanced","platform":"canvas","description":"Extract repeated identifiers as a typed table.","formula":"MatchAll(SerialText,\"SN-(?<serial>\\d{3})\")","inputs":{"SerialText":"SN-101 and SN-202"},"expected":[{"FullMatch":"SN-101","StartMatch":1,"serial":"101"},{"FullMatch":"SN-202","StartMatch":12,"serial":"202"}]},
+  {"id":"canvas-regex-none","name":"Match: absent reference","group":"Validation & regex","level":"Advanced","platform":"canvas","description":"Verify a missing regex match produces Blank rather than an exception.","formula":"Match(Message,\"REF-(?<code>\\d+)\")","inputs":{"Message":"No reference provided"},"expected":null},
+  {"id":"canvas-regex-with","name":"With + Match: extract numeric reference","group":"Validation & regex","level":"Advanced","platform":"canvas","description":"Compose Match and With to safely use a named capture as a scoped value.","formula":"With(Match(\"ref=ORD-4507\", \"ORD-(?<id>\\d+)\"), Value(id)+1)","inputs":{},"expected":4508},
+  {"id":"canvas-regex-numbered","name":"Match: numbered submatches","group":"Validation & regex","level":"Advanced","platform":"canvas","description":"Legacy numbered capture table behavior.","formula":"Match(\"ERP-4507\",\"([A-Z]+)-(\\d+)\",MatchOptions.NumberedSubMatches)","inputs":{},"expected":{"FullMatch":"ERP-4507","StartMatch":1,"SubMatches":[{"Value":"ERP"},{"Value":"4507"}]}},
+  {"id":"canvas-filter-multicriteria","name":"Filter: multiple predicates","group":"Operations & inventory","level":"Advanced","platform":"canvas","description":"Combine three Filter predicates with implicit AND.","formula":"Filter(Orders,Status=\"Open\",Total>=600,Region=\"North\")","inputs":{"Orders":[{"Id":"SO-11","Status":"Open","Total":190,"Region":"North"},{"Id":"SO-12","Status":"Open","Total":800,"Region":"South"},{"Id":"SO-13","Status":"Closed","Total":990,"Region":"North"},{"Id":"SO-14","Status":"Open","Total":650,"Region":"North"}]},"expected":[{"Id":"SO-14","Status":"Open","Total":650,"Region":"North"}]},
+  {"id":"canvas-filter-alias","name":"Filter: alias + external threshold","group":"Operations & inventory","level":"Advanced","platform":"canvas","description":"Use an As alias and input threshold with two row predicates.","formula":"Filter(Orders As o,o.Status=\"Open\",o.Total>=Minimum)","inputs":{"Orders":[{"Id":"SO-11","Status":"Open","Total":190,"Region":"North"},{"Id":"SO-12","Status":"Open","Total":800,"Region":"South"},{"Id":"SO-13","Status":"Closed","Total":990,"Region":"North"},{"Id":"SO-14","Status":"Open","Total":650,"Region":"North"}],"Minimum":600},"expected":[{"Id":"SO-12","Status":"Open","Total":800,"Region":"South"},{"Id":"SO-14","Status":"Open","Total":650,"Region":"North"}]},
+  {"id":"canvas-filter-nested","name":"Filter + CountIf: nested aliases","group":"Sales & CRM","level":"Advanced","platform":"canvas","description":"Correlate two collections with nested record scopes (equivalent to an in-memory join).","formula":"Filter(Customers As c,CountIf(Orders As o,o.CustomerId=c.Id)>1)","inputs":{"Customers":[{"Id":1,"Company":"Fabrikam"},{"Id":2,"Company":"Northwind"}],"Orders":[{"CustomerId":1,"Id":"001"},{"CustomerId":1,"Id":"002"},{"CustomerId":2,"Id":"003"}]},"expected":[{"Id":1,"Company":"Fabrikam"}]},
+  {"id":"canvas-with-filter-sum","name":"With + Filter + Sum: totals","group":"Finance & billing","level":"Advanced","platform":"canvas","description":"Calculate VAT-inclusive revenue using composed table operations and local variables.","formula":"With({VAT:0.18},Round(Sum(Filter(Orders As o,o.Status=\"Open\"),Total)*(1+VAT),2))","inputs":{"Orders":[{"Id":"SO-11","Status":"Open","Total":190,"Region":"North"},{"Id":"SO-12","Status":"Open","Total":800,"Region":"South"},{"Id":"SO-13","Status":"Closed","Total":990,"Region":"North"},{"Id":"SO-14","Status":"Open","Total":650,"Region":"North"}]},"expected":1935.2},
+  {"id":"canvas-addcolumns","name":"AddColumns: total + tax","group":"Finance & billing","level":"Advanced","platform":"canvas","description":"Enrich records without mutating original collection or service data.","formula":"AddColumns(Items As i,\"VAT\",Round(i.Total*0.18,2))","inputs":{"Items":[{"Sku":"L1","Total":100},{"Sku":"L2","Total":50}]},"expected":[{"Sku":"L1","Total":100,"VAT":18},{"Sku":"L2","Total":50,"VAT":9}]},
+  {"id":"canvas-distinct","name":"Distinct: territories","group":"Reporting & KPIs","level":"Advanced","platform":"canvas","description":"Get distinct region names as a one-column table.","formula":"Distinct(Orders As o,o.Region)","inputs":{"Orders":[{"Id":"SO-11","Status":"Open","Total":190,"Region":"North"},{"Id":"SO-12","Status":"Open","Total":800,"Region":"South"},{"Id":"SO-13","Status":"Closed","Total":990,"Region":"North"},{"Id":"SO-14","Status":"Open","Total":650,"Region":"North"}]},"expected":[{"Value":"North"},{"Value":"South"}]},
+  {"id":"canvas-showcolumns","name":"ShowColumns: external API DTO","group":"Integration & APIs","level":"Advanced","platform":"canvas","description":"Project only safe fields into an export-style response.","formula":"ShowColumns(Contacts,\"Name\",\"Email\")","inputs":{"Contacts":[{"Name":"Ada","Email":"ada@contoso.example","InternalNote":"sensitive"}]},"expected":[{"Name":"Ada","Email":"ada@contoso.example"}]},
+  {"id":"canvas-dropcolumns","name":"DropColumns: hide internal notes","group":"Integration & APIs","level":"Advanced","platform":"canvas","description":"Drop sensitive internal fields from a mock table.","formula":"DropColumns(Contacts,\"InternalNote\")","inputs":{"Contacts":[{"Name":"Ada","Email":"ada@contoso.example","InternalNote":"private"}]},"expected":[{"Name":"Ada","Email":"ada@contoso.example"}]},
+  {"id":"canvas-search","name":"Search: multi-field contact","group":"Sales & CRM","level":"Advanced","platform":"canvas","description":"Case-insensitive search across multiple columns.","formula":"Search(Contacts,\"ana\",\"Name\",\"Department\")","inputs":{"Contacts":[{"Name":"Ana Diaz","Department":"Finance"},{"Name":"Luis","Department":"Operations"}]},"expected":[{"Name":"Ana Diaz","Department":"Finance"}]},
+  {"id":"canvas-sequence","name":"Sequence: monthly installment index","group":"Finance & billing","level":"Advanced","platform":"canvas","description":"Create a one-column installment-number series.","formula":"Sequence(4,1,1)","inputs":{},"expected":[{"Value":1},{"Value":2},{"Value":3},{"Value":4}]},
+  {"id":"canvas-index","name":"Index: second ranked lead","group":"Sales & CRM","level":"Advanced","platform":"canvas","description":"Read one-based indexed record from an ordered collection.","formula":"Index(Leads,2)","inputs":{"Leads":[{"Company":"Northwind","Score":90},{"Company":"Contoso","Score":82}]},"expected":{"Company":"Contoso","Score":82}},
+  {"id":"canvas-isempty","name":"IsEmpty: no pending payment","group":"Finance & billing","level":"Advanced","platform":"canvas","description":"Verify an empty filtered collection returns true.","formula":"IsEmpty(Filter(Invoices,Status=\"Unpaid\"))","inputs":{"Invoices":[{"Id":1,"Status":"Paid"}]},"expected":true},
+  {"id":"canvas-trace","name":"Trace: approval diagnostics","group":"Developer diagnostics","level":"Advanced","platform":"canvas","description":"Emulate behavior formula traces; see the local diagnostics event, not actual telemetry.","formula":"Trace(\"Escalated approval\",TraceSeverity.Warning,{RequestId:\"APR-509\",Stage:\"Finance\"}); \"Escalated\"","inputs":{},"expected":"Escalated"},
+  {"id":"canvas-trace-with","name":"With + Trace: scoped diagnostic","group":"Developer diagnostics","level":"Advanced","platform":"canvas","description":"Emulate diagnostics from a record scope with custom trace properties.","formula":"With({RequestId:\"RQ-447\"},Trace(RequestId,TraceSeverity.Information,{Origin:\"RequestHub\"}))","inputs":{},"expected":null},
+  {"id":"canvas-regex-parse-array","name":"ForAll + Match: decode device IDs","group":"Validation & regex","level":"Advanced","platform":"canvas","description":"Extract IDs with regular expressions within a scoped table operation.","formula":"ForAll(Devices As d,Match(d.Code,\"DEV-(?<id>\\d+)\").id)","inputs":{"Devices":[{"Code":"DEV-700"},{"Code":"DEV-701"}]},"expected":["700","701"]},
 ];
 
 const examples = scenarios;
+/** Only functions implemented by the LOCAL evaluator are listed as runnable here. */
+const C='canvas', W='flow';
+const refCanvas='https://learn.microsoft.com/en-us/power-platform/power-fx/formula-reference-canvas-apps';
+const refFlow='https://learn.microsoft.com/en-us/azure/logic-apps/expression-functions-reference';
+const functions=[
+  [C,'If','If(condition, then, else)','Conditional expression','Logic'],
+  [C,'Switch','Switch(value, match, result, default)','Match a value against cases','Logic'],
+  [C,'IfError','IfError(expression, fallback)','Return fallback on evaluation error','Logic'],
+  [C,'Coalesce','Coalesce(value1, value2, ...)','First nonblank value','Logic'],
+  [C,'Blank','Blank()','Return a null/blank value','Logic'],
+  [C,'IsBlank','IsBlank(value)','Check for blank or empty text','Logic'],
+  [C,'IsBlankOrError','IsBlankOrError(value)','Check for blank or a formula error','Logic'],
+  [C,'With','With({name: value}, expression)','Evaluate with a named, lexically-scoped record','Advanced'],
+  [C,'Trace','Trace(message, TraceSeverity.Warning, {info: 1})','Simulate behavior-only telemetry for debugging','Diagnostics'],
+  [C,'IsMatch','IsMatch(text, pattern, MatchOptions.IgnoreCase)','Validate text with a constant regex pattern','Regex'],
+  [C,'Match','Match(text, pattern)','Extract first regex match with named capture groups','Regex'],
+  [C,'MatchAll','MatchAll(text, pattern)','Extract regex matches to a table','Regex'],
+  [C,'StartsWith','StartsWith(text, prefix)','Check case-insensitive prefix','Text'],
+  [C,'EndsWith','EndsWith(text, suffix)','Check case-insensitive suffix','Text'],
+  [C,'Filter','Filter(records, condition)','Filter records by a row predicate','Tables'],
+  [C,'LookUp','LookUp(records, condition, result)','Find the first matching record','Tables'],
+  [C,'CountIf','CountIf(records, condition)','Count matching records','Tables'],
+  [C,'ForAll','ForAll(records, expression)','Calculate a result for each record','Tables'],
+  [C,'Sort','Sort(records, formula, order)','Sort by a row expression','Tables'],
+  [C,'Sum','Sum(records, formula)','Sum a numeric column expression','Tables'],
+  [C,'Average','Average(records, formula)','Average a numeric column expression','Tables'],
+  [C,'AddColumns','AddColumns(records, "NewColumn", expression)','Add computed columns without modifying source','Tables'],
+  [C,'Distinct','Distinct(records, expression)','Remove duplicate values','Tables'],
+  [C,'Search','Search(records, text, "Column1", "Column2")','Search several text fields','Tables'],
+  [C,'ShowColumns','ShowColumns(records, "Column")','Project selected fields','Tables'],
+  [C,'DropColumns','DropColumns(records, "Column")','Remove selected fields','Tables'],
+  [C,'Sequence','Sequence(count, start, step)','Generate numeric records','Tables'],
+  [C,'Index','Index(records, index)','Read one-based table index','Tables'],
+  [C,'IsEmpty','IsEmpty(records)','Check empty table','Tables'],
+  [C,'CountRows','CountRows(records)','Count records in a table','Tables'],
+  [C,'First','First(records)','First record of table','Tables'],
+  [C,'Last','Last(records)','Last record of table','Tables'],
+  [C,'FirstN','FirstN(records, count)','First N records','Tables'],
+  [C,'LastN','LastN(records, count)','Last N records','Tables'],
+  [C,'Table','Table(record1, record2, ...)','Create a table of records','Tables'],
+  [C,'Min','Min(number1, number2, ...)','Minimum value','Numbers'],
+  [C,'Max','Max(number1, number2, ...)','Maximum value','Numbers'],
+  [C,'Round','Round(number, decimalPlaces)','Round to decimal places','Numbers'],
+  [C,'RoundDown','RoundDown(number, decimalPlaces)','Truncate to decimal places','Numbers'],
+  [C,'Abs','Abs(number)','Absolute value','Numbers'],
+  [C,'Value','Value(text)','Parse number','Numbers'],
+  [C,'IsNumeric','IsNumeric(value)','Check whether a value can be numeric','Numbers'],
+  [C,'Concatenate','Concatenate(text1, text2, ...)','Join text arguments','Text'],
+  [C,'Lower','Lower(text)','Convert to lowercase','Text'],
+  [C,'Upper','Upper(text)','Convert to uppercase','Text'],
+  [C,'Trim','Trim(text)','Trim surrounding whitespace (local subset)','Text'],
+  [C,'Len','Len(text)','Text length','Text'],
+  [C,'Left','Left(text, count)','First characters','Text'],
+  [C,'Right','Right(text, count)','Last characters','Text'],
+  [C,'Mid','Mid(text, start, count)','Extract substring','Text'],
+  [C,'Substitute','Substitute(text, old, new)','Replace matching text','Text'],
+  [C,'Text','Text(value)','Convert to text (local subset)','Text'],
+  [W,'if','if(condition, yes, no)','Conditional workflow expression','Logic'],
+  [W,'and','and(condition1, condition2)','All conditions true','Logic'],
+  [W,'or','or(condition1, condition2)','Any condition true','Logic'],
+  [W,'not','not(condition)','Invert a boolean','Logic'],
+  [W,'equals','equals(value1, value2)','Compare exact values','Logic'],
+  [W,'greater','greater(a, b)','Compare two values','Logic'],
+  [W,'greaterOrEquals','greaterOrEquals(a, b)','Greater than or equal','Logic'],
+  [W,'less','less(a, b)','Less than','Logic'],
+  [W,'lessOrEquals','lessOrEquals(a, b)','Less than or equal','Logic'],
+  [W,'coalesce','coalesce(a, b, ...)','First nonnull value','Logic'],
+  [W,'empty','empty(value)','Check for empty text, object or array','Logic'],
+  [W,'variables','variables(\'Name\')','Read a simulated workflow variable','Context'],
+  [W,'parameters','parameters(\'Name\')','Read a simulated flow parameter','Context'],
+  [W,'outputs','outputs(\'Action_name\')','Read a simulated action output','Context'],
+  [W,'body','body(\'Action_name\')','Read a simulated action body','Context'],
+  [W,'actions','actions(\'Action_name\')','Read simulated action metadata','Context'],
+  [W,'items','items(\'Loop_name\')','Read a simulated Apply to each item','Context'],
+  [W,'item','item()','Read current simulated loop item','Context'],
+  [W,'triggerBody','triggerBody()','Read a simulated trigger body','Context'],
+  [W,'triggerOutputs','triggerOutputs()','Read simulated trigger outputs','Context'],
+  [W,'concat','concat(text1, text2, ...)','Join values as text','Text'],
+  [W,'toLower','toLower(text)','Convert to lowercase','Text'],
+  [W,'toUpper','toUpper(text)','Convert to uppercase','Text'],
+  [W,'trim','trim(text)','Trim leading and trailing spaces','Text'],
+  [W,'length','length(value)','Length of text or array','Text'],
+  [W,'substring','substring(text, start, length)','Extract substring','Text'],
+  [W,'replace','replace(text, old, new)','Replace matching text','Text'],
+  [W,'split','split(text, delimiter)','Split string to array','Collections'],
+  [W,'join','join(array, delimiter)','Join array to text','Collections'],
+  [W,'createArray','createArray(a, b, ...)','Create an array','Collections'],
+  [W,'contains','contains(value, item)','Check string, array or object membership','Collections'],
+  [W,'first','first(array)','First array item','Collections'],
+  [W,'last','last(array)','Last array item','Collections'],
+  [W,'json','json(text)','Parse a JSON string','Collections'],
+  [W,'add','add(a, b)','Add two numbers','Numbers'],
+  [W,'sub','sub(a, b)','Subtract two numbers','Numbers'],
+  [W,'mul','mul(a, b)','Multiply two numbers','Numbers'],
+  [W,'div','div(a, b)','Divide two numbers','Numbers'],
+  [W,'mod','mod(a, b)','Modulo','Numbers'],
+  [W,'pow','pow(a, b)','Power','Numbers'],
+  [W,'round','round(number, decimals)','Round a number (sandbox extension; verify in target flow)','Numbers'],
+  [W,'int','int(value)','Convert to integer','Numbers'],
+  [W,'float','float(value)','Convert to number','Numbers'],
+  [W,'string','string(value)','Convert to string','Numbers'],
+  [W,'bool','bool(value)','Convert to boolean','Numbers']
+];
+const functionCatalog=functions.map(([platform,name,signature,description,category])=>({platform,name,signature,description,category,docs:platform===C?refCanvas:refFlow}));
+/** Pure helpers shared by browser interactions and Node regression tests. */
+function completionContext(source,cursor=source.length,force=false){
+  const left=source.slice(0,cursor);
+  let quote=null;for(let i=0;i<left.length;i++){
+    const ch=left[i];
+    if(quote){if(ch==='\\'&&i+1<left.length){i++;continue;}if(quote==="'"&&left[i+1]==="'"){i++;continue;}if(ch===quote)quote=null;}
+    else if(ch==='"'||ch==="'")quote=ch;
+  }
+  if(quote)return null;
+  const match=/([A-Za-z_][A-Za-z_0-9]*)$/.exec(left);
+  if(!match && !force)return null;
+  const term=match?.[1]??'';
+  if(!force&&term.length<2)return null;
+  if(left.slice(0,left.length-term.length).endsWith('.'))return null;
+  return {term,start:cursor-term.length,end:cursor};
+}
+function functionMatches(catalog,platform,prefix='',limit=8){
+  const term=prefix.toLowerCase();
+  return catalog.filter(item=>item.platform===platform&&item.name.toLowerCase().startsWith(term)).slice(0,limit);
+}
+function csvSerialize(rows){
+  if(!Array.isArray(rows)||rows.length===0||rows.length>5000||!rows.every(r=>r&&typeof r==='object'&&!Array.isArray(r)))throw Error('CSV export requires 1–5,000 records');
+  const cols=[...new Set(rows.flatMap(r=>Object.keys(r)))].slice(0,40);
+  const escapeCell=v=>{
+    let s=v==null?'':typeof v==='object'?JSON.stringify(v):String(v);
+    // Spreadsheet formula injection: prevent untrusted cells becoming formulas.
+    if(/^[\s]*[=+@\-]/.test(s))s="'"+s;
+    return '"'+s.replace(/"/g,'""')+'"';
+  };
+  return '\uFEFF'+[cols.map(escapeCell).join(','),...rows.map(r=>cols.map(c=>escapeCell(r[c])).join(','))].join('\r\n');
+}
+function jsonTreeLabel(value){
+  if(Array.isArray(value))return `Array (${value.length})`;
+  if(value!==null&&typeof value==='object')return `Object (${Object.keys(value).length})`;
+  return JSON.stringify(value)??'undefined';
+}
+function validateSuite(cases){
+  if(!Array.isArray(cases)||cases.length<1||cases.length>25)throw Error('Suite must contain 1–25 test cases');
+  for(const [i,item] of cases.entries()){
+    if(!item||typeof item!=='object'||Array.isArray(item)||!item.inputs||typeof item.inputs!=='object'||Array.isArray(item.inputs)||!Object.hasOwn(item,'expected'))throw Error(`Case ${i+1} requires inputs object and expected value`);
+    if(item.name!==undefined&&typeof item.name!=='string')throw Error(`Case ${i+1} has an invalid name`);
+  }
+  return cases;
+}
 const $ = id => document.getElementById(id);
 const formatJSON = v => JSON.stringify(v,null,2);
 const parseVal = raw => JSON.parse(raw);
@@ -126,7 +320,7 @@ function activateTab(next){
 function selectResultView(next){
   resultView=next;
   for(const b of document.querySelectorAll('[data-result-view]')){const active=b.dataset.resultView===next;b.classList.toggle('active',active);b.setAttribute('aria-selected',String(active));}
-  $('result-json').hidden=next!=='json';$('result-table').hidden=next!=='table';
+  $('result-json').hidden=next!=='json';$('result-table').hidden=next!=='table';$('result-tree').hidden=next!=='tree';
   if(next==='table')$('result-table').classList.toggle('table-empty',!$('result-table').querySelector('table'));
 }
 function preserveInputs(){
@@ -198,10 +392,10 @@ async function request(path,data){
   }catch(error){return {success:false,valid:false,error:{message:'Evaluation server unavailable: '+error.message}};}
 }
 function showError(message,position){
-  lastResult=null;status($('execution-status'),'Error','fail');$('error-detail').hidden=false;
+  lastResult=null;renderTraces(null);$('export-csv').disabled=true;status($('execution-status'),'Error','fail');$('error-detail').hidden=false;
   $('error-detail').textContent=String(message)+(position!=null?` (position ${position})`:'');
   $('result-json').textContent='// Evaluation failed';$('result-type').textContent='Error';$('result-time').textContent='—';$('assertion').textContent='—';
-  $('result-table').replaceChildren();workspaceStatus('Evaluation error',true);selectResultView('json');
+  $('result-table').replaceChildren();$('result-tree').replaceChildren();workspaceStatus('Evaluation error',true);selectResultView('json');
 }
 async function analyze(silent=false){
   try{const data=await request('/api/analyze',{formula:$('formula').value,platform:$('platform').value});
@@ -228,6 +422,80 @@ function renderTable(data){
   for(const row of data.slice(0,100)){const tr=document.createElement('tr');for(const key of keys){const cell=document.createElement('td'),value=row[key];cell.textContent=value&&typeof value==='object'?formatJSON(value):String(value??'');tr.append(cell);}table.append(tr);}
   container.append(table);
 }
+function renderTraces(result){
+  const panel=$('trace-panel'),body=$('trace-events');
+  panel.hidden=!result?.traces?.length;
+  body.replaceChildren();
+  if(!result?.traces?.length)return;
+  $('trace-count').textContent=String(result.traces.length);
+  for(const entry of result.traces.slice(0,40)){
+    const item=document.createElement('article');item.className='trace-event';
+    const head=document.createElement('strong');head.textContent=`${entry.severity} · ${entry.message}`;
+    const payload=document.createElement('pre');payload.textContent=formatJSON(entry.customRecord);
+    item.append(head,payload);body.append(item);
+  }
+}
+function makeTree(value,parent,level=0,budget={remaining:250}){
+  if(budget.remaining--<=0||level>8){const node=document.createElement('span');node.className='tree-truncated';node.textContent='… truncated';parent.append(node);return;}
+  if(value!==null&&typeof value==='object'){
+    const wrapper=document.createElement('details');wrapper.className='tree-branch';wrapper.open=level<2;
+    const label=document.createElement('summary');label.textContent=jsonTreeLabel(value);wrapper.append(label);
+    for(const [key,child] of Object.entries(value).slice(0,100)){
+      const row=document.createElement('div');row.className='tree-leaf';
+      const name=document.createElement('span');name.className='tree-key';name.textContent=key;
+      row.append(name);const item=document.createElement('span');item.className='tree-value';row.append(item);
+      makeTree(child,item,level+1,budget);wrapper.append(row);
+    }
+    parent.append(wrapper);
+  }else{
+    const text=document.createElement('span');text.className='tree-value';text.textContent=jsonTreeLabel(value);parent.append(text);
+  }
+}
+function renderFunctionCatalog(){
+  const target=$('function-list');target.replaceChildren();
+  const query=$('function-search').value.trim().toLowerCase(),platform=$('platform').value;
+  for(const item of functionCatalog.filter(x=>x.platform===platform&&(`${x.name} ${x.description} ${x.category}`.toLowerCase().includes(query))).slice(0,90)){
+    const btn=document.createElement('button');btn.type='button';btn.className='function-item';
+    const label=document.createElement('strong');label.textContent=item.name;
+    const details=document.createElement('small');details.textContent=`${item.category} · ${item.signature}`;
+    btn.append(label,details);btn.title=item.description;btn.addEventListener('click',()=>insertFunction(item));target.append(btn);
+  }
+}
+function insertFunction(item){
+  const field=$('formula'),start=field.selectionStart,end=field.selectionEnd;
+  field.setRangeText(item.name+'(',start,end,'end');field.focus();field.dispatchEvent(new Event('input',{bubbles:true}));
+  $('signature-hint').textContent=item.signature+' — '+item.description;$('signature-hint').hidden=false;
+  $('completion-list').hidden=true;field.setAttribute('aria-expanded','false');
+}
+function renderCompletions(force=false){
+  const field=$('formula'),context=completionContext(field.value,field.selectionStart,force),popup=$('completion-list');
+  popup.replaceChildren();
+  const matches=context?functionMatches(functionCatalog,$('platform').value,context.term,9):[];
+  if(!matches.length){popup.hidden=true;field.setAttribute('aria-expanded','false');return;}
+  for(const item of matches){
+    const btn=document.createElement('button');btn.type='button';btn.className='completion-item';
+    const strong=document.createElement('strong');strong.textContent=item.name;
+    const small=document.createElement('small');small.textContent=item.description;
+    btn.append(strong,small);btn.addEventListener('mousedown',e=>e.preventDefault());
+    btn.addEventListener('click',()=>{field.setRangeText(item.name+'(',context.start,field.selectionStart,'end');field.focus();field.dispatchEvent(new Event('input',{bubbles:true}));popup.hidden=true;field.setAttribute('aria-expanded','false');});
+    popup.append(btn);
+  }
+  popup.hidden=false;field.setAttribute('aria-expanded','true');
+}
+async function runSuite(){
+  $('suite-results').replaceChildren();let cases;
+  try{cases=validateSuite(JSON.parse($('suite-cases').value));}
+  catch(error){$('suite-summary').textContent=error.message;return;}
+  let passed=0;for(const [i,entry] of cases.entries()){
+    const result=await request('/api/evaluate',{formula:$('formula').value,platform:$('platform').value,locale:$('locale').value,inputs:entry.inputs,expected:entry.expected});
+    const success=result.success&&result.assertion?.passed===true;if(success)passed++;
+    const row=document.createElement('div');row.className='suite-result '+(success?'passed':'failed');
+    const title=document.createElement('strong');title.textContent=`${success?'✓':'✕'} ${entry.name||'Case '+(i+1)}`;
+    const details=document.createElement('code');details.textContent=success?'Expected output matched':`Expected: ${formatJSON(entry.expected)}\nReceived: ${result.error?.message||formatJSON(result.value)}`;
+    row.append(title,details);$('suite-results').append(row);
+  }
+  $('suite-summary').textContent=`${passed}/${cases.length} tests passed`;
+}
 async function run(){
   clearTimeout(analyzeTimer);status($('execution-status'),'Running…');$('error-detail').hidden=true;workspaceStatus('Running expression');
   try{
@@ -241,7 +509,7 @@ async function run(){
     $('result-json').textContent=formatJSON(result.value)??'undefined';$('result-type').textContent=result.valueType;
     $('result-time').textContent=`${result.elapsedMs??0} ms`;
     $('assertion').textContent=result.assertion?(passed?'✓ Passed':'✕ Failed'):'Not set';
-    $('error-detail').hidden=true;renderTable(result.value);selectResultView(resultView);workspaceStatus(passed===false?'Assertion failed':'Run complete',passed===false);
+    $('error-detail').hidden=true;renderTable(result.value);$('result-tree').replaceChildren();makeTree(result.value,$('result-tree'));$('export-csv').disabled=!Array.isArray(result.value)||!result.value.length||!result.value.every(v=>v&&typeof v==='object'&&!Array.isArray(v));renderTraces(result);selectResultView(resultView);workspaceStatus(passed===false?'Assertion failed':'Run complete',passed===false);
     history.unshift({formula:payload.formula,platform:payload.platform,inputs:payload.inputs,expected:payload.expected,time:new Date().toISOString(),passed:passed??true});
     history=history.slice(0,15);saveHistory();renderHistory();
   }catch(error){showError(error.message);}
@@ -298,14 +566,14 @@ function setPlatform(){
   $('locale').disabled=!canvas;
   for(const b of document.querySelectorAll('[data-platform]')){const active=b.dataset.platform===$('platform').value;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));}
   status($('formula-status'),'Not validated');
-  updateEditor();
+  renderFunctionCatalog();updateEditor();
 }
 async function loadExample(example){
   selectedExample=example.index??examples.indexOf(example);inputs=structuredClone(example.inputs);$('input-fields').replaceChildren();$('platform').value=example.platform;$('formula').value=example.formula;
   $('expected').value=example.expected===undefined?'':formatJSON(example.expected);setPlatform();showScenarioDetails(example);renderExamples();await analyze(true);
   $('result-json').textContent='// Run an expression to inspect the return value.';
   $('result-type').textContent='—';$('result-time').textContent='—';$('assertion').textContent='—';status($('execution-status'),'Ready');
-  $('error-detail').hidden=true;$('result-table').replaceChildren();selectResultView('json');activateTab('inputs');workspaceStatus('Scenario loaded');
+  $('error-detail').hidden=true;$('result-table').replaceChildren();$('result-tree').replaceChildren();renderTraces(null);$('export-csv').disabled=true;selectResultView('json');activateTab('inputs');workspaceStatus('Scenario loaded');
 }
 async function init(){
   // Render the library first; later initialization errors must not hide samples.
@@ -320,11 +588,14 @@ async function init(){
   }));
   $('platform').addEventListener('change',async()=>{setPlatform();await analyze(true);});
   $('formula').addEventListener('input',()=>{
+    renderCompletions(false);
     selectedExample=-1;showScenarioDetails();updateEditor();renderExamples();status($('formula-status'),'Edited');workspaceStatus('Unsaved changes');
     clearTimeout(analyzeTimer);analyzeTimer=setTimeout(()=>analyze(true),600);
   });
   $('formula').addEventListener('scroll',syncCodeScroll);
   $('formula').addEventListener('keydown',event=>{
+    if((event.ctrlKey||event.metaKey)&&event.code==='Space'){event.preventDefault();renderCompletions(true);return;}
+    if(event.key==='Escape'){$('completion-list').hidden=true;$('formula').setAttribute('aria-expanded','false');return;}
     if(event.key==='Tab'){event.preventDefault();const el=$('formula'),start=el.selectionStart;el.setRangeText('  ',start,el.selectionEnd,'end');el.dispatchEvent(new Event('input',{bubbles:true}));}
   });
   document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>activateTab(b.dataset.tab)));
@@ -337,6 +608,20 @@ async function init(){
   $('json-modal-text').addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();saveJsonEditor();}});
   $('analyze-button').onclick=async()=>{const valid=await analyze();if(valid)activateTab('inputs');};
   $('run-button').onclick=run;
+  $('function-search').addEventListener('input',renderFunctionCatalog);
+  $('suite-run').onclick=runSuite;
+  $('suite-template').onclick=()=>{
+    try{
+      const payload={name:'Current inputs',inputs:readInputs(),expected:$('expected').value.trim()?parseVal($('expected').value):null};
+      $('suite-cases').value=formatJSON([payload]);activateTab('suite');
+    }catch(error){$('suite-summary').textContent=error.message;}
+  };
+  $('export-csv').onclick=()=>{
+    try{
+      const csv=csvSerialize(lastResult?.value),url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+      const link=document.createElement('a');link.href=url;link.download='powerfx-result.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),2000);
+    }catch(error){workspaceStatus(error.message,true);}
+  };
   $('add-input').onclick=()=>{const key=prompt('Input name (e.g. User, variables:count, outputs:Compose)');if(!key||key.length>120||['__proto__','constructor','prototype'].includes(key))return;preserveInputs();if(!found.some(x=>x.key===key))found.push({key,kind:'custom'});renderInputs();};
   $('clear-history').onclick=()=>{history=[];saveHistory();renderHistory();};
   $('copy-result').onclick=async()=>{
@@ -363,7 +648,7 @@ async function init(){
     if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();run();}
     if(event.key==='/'&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!['INPUT','TEXTAREA'].includes(document.activeElement?.tagName)){event.preventDefault();$('example-search').focus();}
   });
-  renderHistory();renderExamples();await loadExample(examples[0]);
+  renderHistory();renderExamples();renderFunctionCatalog();await loadExample(examples[0]);
   if(staticMode){$('backend-pill').innerHTML='<span class="status-dot"></span>Browser sandbox';$('engine-label').textContent='Browser compatibility subset';}
   else try{const res=await fetch('/api/status');if(!res.ok)throw new Error('No backend');const config=await res.json();
     $('backend-pill').innerHTML='<span class="status-dot"></span>'+(config.nativeCanvas?'Official Power Fx connected':'Local sandbox');

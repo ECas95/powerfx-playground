@@ -104,6 +104,11 @@ export function parse(source, mode='canvas') {
     } else throw new ExpressionError(`Expresión inesperada: ${t.value}`,t.pos);
     while (true) {
       const v=String(peek().value).toLowerCase();
+      if (mode==='canvas' && v==='as' && min<=9) {
+        next(); const alias=next();
+        if(alias.type!=='id')throw new ExpressionError('Se esperaba un alias después de As',alias.pos);
+        node={type:'alias',base:node,alias:alias.value}; continue;
+      }
       if (v==='(' && min<=9) {
         next(); const args=[];
         if(!match(')')) do {args.push(expression()); if(!argSep.includes(peek().value))break; next();}while(!match(')'));
@@ -121,34 +126,68 @@ export function parse(source, mode='canvas') {
     }
     return node;
   };
-  const root=expression();
+  let root=expression();
+  // Formula chaining in a Canvas behavior property; semicolons inside calls
+  // remain argument separators for supported locales.
+  if(mode==='canvas'&&match(';')){
+    const items=[root];
+    while(match(';')){next();if(peek().type==='eof')break;items.push(expression());}
+    root={type:'sequence',items};
+  }
   if(peek().type!=='eof')throw new ExpressionError(`Token inesperado: ${peek().value}`,peek().pos);
   return root;
 }
 
 export function analyze(ast,mode='canvas') {
   const inputs=new Map();
-  const add=(key,kind='variable')=>{if(key&&!inputs.has(key)) inputs.set(key,{key,kind});};
-  const walk=(n,local=false)=>{
+  const builtin=new Set(['thisrecord','self','parent','app','match','matchoptions','traceseverity','traceoptions','sortorder']);
+  const add=(key,kind='variable')=>{if(key&&!inputs.has(key))inputs.set(key,{key,kind});};
+  const walk=(n,local=false,bound=new Set())=>{
     if(!n)return;
     switch(n.type){
+      case 'literal':return;
       case 'identifier':
-        if(!local&&!['ThisRecord','Self','Parent','App'].includes(n.name))add(n.name);return;
-      case 'call': {
+        if(!local&&!builtin.has(n.name.toLowerCase())&&!bound.has(n.name.toLowerCase()))add(n.name);
+        return;
+      case 'alias':walk(n.base,local,bound);return;
+      case 'sequence':n.items.forEach(a=>walk(a,local,bound));return;
+      case 'call':{
         const name=n.callee.type==='identifier'?n.callee.name.toLowerCase():'';
-        if(mode==='flow'&&['variables','parameters','outputs','body','items','actions'].includes(name)&&n.args[0]?.type==='literal') {
-          add(`${name}:${n.args[0].value}`,name);for(const a of n.args.slice(1))walk(a,local);return;
+        if(mode==='flow'&&['variables','parameters','outputs','body','items','actions'].includes(name)&&n.args[0]?.type==='literal'){
+          add(`${name}:${n.args[0].value}`,name);n.args.slice(1).forEach(a=>walk(a,local,bound));return;
         }
         if(mode==='flow'&&['triggerbody','triggeroutputs','item'].includes(name)){add(name,name);return;}
-        if(!name)walk(n.callee,local);
-        n.args.forEach((a,i)=>walk(a,local||mode==='canvas'&&i>0&&['filter','lookup','sum','average','forall','addcolumns','countif'].includes(name)));
-        return;
+        if(!name)walk(n.callee,local,bound);
+        if(mode==='canvas'&&name==='with'&&n.args.length>=2){
+          walk(n.args[0]?.type==='alias'?n.args[0].base:n.args[0],local,bound);
+          const b=new Set(bound);
+          if(n.args[0]?.type==='record')n.args[0].fields.forEach(f=>b.add(f.key.toLowerCase()));
+          if(n.args[0]?.type==='alias')b.add(n.args[0].alias.toLowerCase());
+          // Fields of records coming from Match or an input cannot be statically inferred.
+          walk(n.args[1],n.args[0]?.type!=='record'&&n.args[0]?.type!=='alias',b);
+          return;
+        }
+        const rowFunctions=new Set(['filter','lookup','sum','average','forall','addcolumns','countif','sort','distinct','min','max']);
+        if(mode==='canvas'&&rowFunctions.has(name)&&n.args.length>1){
+          const source=n.args[0],alias=source?.type==='alias'?source.alias:null;
+          walk(source?.type==='alias'?source.base:source,local,bound);
+          const b=new Set(bound);if(alias)b.add(alias.toLowerCase());
+          for(let i=1;i<n.args.length;i++){
+            // Without explicit alias, unqualified fields can be row columns.
+            // With an alias, regular external variables are detectable.
+            const rowSelector= name==='lookup'?i<=2:name==='addcolumns'?i>=2&&i%2===0:name==='sort'?i===1:name==='filter'||name==='countif'?true:i===1;
+            const columnName=name==='addcolumns'&&i%2===1;
+            walk(n.args[i],local||rowSelector&&!alias||columnName,b);
+          }
+          return;
+        }
+        n.args.forEach(a=>walk(a,local,bound));return;
       }
-      case 'member':walk(n.base,local);walk(n.key,true);return;
-      case 'binary':walk(n.left,local);walk(n.right,local);return;
-      case 'unary':walk(n.right,local);return;
-      case 'record':n.fields.forEach(f=>walk(f.value,local));return;
-      case 'array':n.items.forEach(a=>walk(a,local));return;
+      case 'member':walk(n.base,local,bound);if(n.key.type!=='literal')walk(n.key,true,bound);return;
+      case 'binary':walk(n.left,local,bound);walk(n.right,local,bound);return;
+      case 'unary':walk(n.right,local,bound);return;
+      case 'record':n.fields.forEach(f=>walk(f.value,local,bound));return;
+      case 'array':n.items.forEach(a=>walk(a,local,bound));return;
     }
   };
   walk(ast);return [...inputs.values()];

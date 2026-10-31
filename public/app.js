@@ -1,4 +1,6 @@
 import {scenarios as examples} from './scenarios.js';
+import {functionCatalog} from './function-catalog.js';
+import {completionContext,functionMatches,csvSerialize,jsonTreeLabel,validateSuite} from './client-tools.js';
 const $ = id => document.getElementById(id);
 const formatJSON = v => JSON.stringify(v,null,2);
 const parseVal = raw => JSON.parse(raw);
@@ -39,7 +41,7 @@ function activateTab(next){
 function selectResultView(next){
   resultView=next;
   for(const b of document.querySelectorAll('[data-result-view]')){const active=b.dataset.resultView===next;b.classList.toggle('active',active);b.setAttribute('aria-selected',String(active));}
-  $('result-json').hidden=next!=='json';$('result-table').hidden=next!=='table';
+  $('result-json').hidden=next!=='json';$('result-table').hidden=next!=='table';$('result-tree').hidden=next!=='tree';
   if(next==='table')$('result-table').classList.toggle('table-empty',!$('result-table').querySelector('table'));
 }
 function preserveInputs(){
@@ -111,10 +113,10 @@ async function request(path,data){
   }catch(error){return {success:false,valid:false,error:{message:'Evaluation server unavailable: '+error.message}};}
 }
 function showError(message,position){
-  lastResult=null;status($('execution-status'),'Error','fail');$('error-detail').hidden=false;
+  lastResult=null;renderTraces(null);$('export-csv').disabled=true;status($('execution-status'),'Error','fail');$('error-detail').hidden=false;
   $('error-detail').textContent=String(message)+(position!=null?` (position ${position})`:'');
   $('result-json').textContent='// Evaluation failed';$('result-type').textContent='Error';$('result-time').textContent='—';$('assertion').textContent='—';
-  $('result-table').replaceChildren();workspaceStatus('Evaluation error',true);selectResultView('json');
+  $('result-table').replaceChildren();$('result-tree').replaceChildren();workspaceStatus('Evaluation error',true);selectResultView('json');
 }
 async function analyze(silent=false){
   try{const data=await request('/api/analyze',{formula:$('formula').value,platform:$('platform').value});
@@ -141,6 +143,80 @@ function renderTable(data){
   for(const row of data.slice(0,100)){const tr=document.createElement('tr');for(const key of keys){const cell=document.createElement('td'),value=row[key];cell.textContent=value&&typeof value==='object'?formatJSON(value):String(value??'');tr.append(cell);}table.append(tr);}
   container.append(table);
 }
+function renderTraces(result){
+  const panel=$('trace-panel'),body=$('trace-events');
+  panel.hidden=!result?.traces?.length;
+  body.replaceChildren();
+  if(!result?.traces?.length)return;
+  $('trace-count').textContent=String(result.traces.length);
+  for(const entry of result.traces.slice(0,40)){
+    const item=document.createElement('article');item.className='trace-event';
+    const head=document.createElement('strong');head.textContent=`${entry.severity} · ${entry.message}`;
+    const payload=document.createElement('pre');payload.textContent=formatJSON(entry.customRecord);
+    item.append(head,payload);body.append(item);
+  }
+}
+function makeTree(value,parent,level=0,budget={remaining:250}){
+  if(budget.remaining--<=0||level>8){const node=document.createElement('span');node.className='tree-truncated';node.textContent='… truncated';parent.append(node);return;}
+  if(value!==null&&typeof value==='object'){
+    const wrapper=document.createElement('details');wrapper.className='tree-branch';wrapper.open=level<2;
+    const label=document.createElement('summary');label.textContent=jsonTreeLabel(value);wrapper.append(label);
+    for(const [key,child] of Object.entries(value).slice(0,100)){
+      const row=document.createElement('div');row.className='tree-leaf';
+      const name=document.createElement('span');name.className='tree-key';name.textContent=key;
+      row.append(name);const item=document.createElement('span');item.className='tree-value';row.append(item);
+      makeTree(child,item,level+1,budget);wrapper.append(row);
+    }
+    parent.append(wrapper);
+  }else{
+    const text=document.createElement('span');text.className='tree-value';text.textContent=jsonTreeLabel(value);parent.append(text);
+  }
+}
+function renderFunctionCatalog(){
+  const target=$('function-list');target.replaceChildren();
+  const query=$('function-search').value.trim().toLowerCase(),platform=$('platform').value;
+  for(const item of functionCatalog.filter(x=>x.platform===platform&&(`${x.name} ${x.description} ${x.category}`.toLowerCase().includes(query))).slice(0,90)){
+    const btn=document.createElement('button');btn.type='button';btn.className='function-item';
+    const label=document.createElement('strong');label.textContent=item.name;
+    const details=document.createElement('small');details.textContent=`${item.category} · ${item.signature}`;
+    btn.append(label,details);btn.title=item.description;btn.addEventListener('click',()=>insertFunction(item));target.append(btn);
+  }
+}
+function insertFunction(item){
+  const field=$('formula'),start=field.selectionStart,end=field.selectionEnd;
+  field.setRangeText(item.name+'(',start,end,'end');field.focus();field.dispatchEvent(new Event('input',{bubbles:true}));
+  $('signature-hint').textContent=item.signature+' — '+item.description;$('signature-hint').hidden=false;
+  $('completion-list').hidden=true;field.setAttribute('aria-expanded','false');
+}
+function renderCompletions(force=false){
+  const field=$('formula'),context=completionContext(field.value,field.selectionStart,force),popup=$('completion-list');
+  popup.replaceChildren();
+  const matches=context?functionMatches(functionCatalog,$('platform').value,context.term,9):[];
+  if(!matches.length){popup.hidden=true;field.setAttribute('aria-expanded','false');return;}
+  for(const item of matches){
+    const btn=document.createElement('button');btn.type='button';btn.className='completion-item';
+    const strong=document.createElement('strong');strong.textContent=item.name;
+    const small=document.createElement('small');small.textContent=item.description;
+    btn.append(strong,small);btn.addEventListener('mousedown',e=>e.preventDefault());
+    btn.addEventListener('click',()=>{field.setRangeText(item.name+'(',context.start,field.selectionStart,'end');field.focus();field.dispatchEvent(new Event('input',{bubbles:true}));popup.hidden=true;field.setAttribute('aria-expanded','false');});
+    popup.append(btn);
+  }
+  popup.hidden=false;field.setAttribute('aria-expanded','true');
+}
+async function runSuite(){
+  $('suite-results').replaceChildren();let cases;
+  try{cases=validateSuite(JSON.parse($('suite-cases').value));}
+  catch(error){$('suite-summary').textContent=error.message;return;}
+  let passed=0;for(const [i,entry] of cases.entries()){
+    const result=await request('/api/evaluate',{formula:$('formula').value,platform:$('platform').value,locale:$('locale').value,inputs:entry.inputs,expected:entry.expected});
+    const success=result.success&&result.assertion?.passed===true;if(success)passed++;
+    const row=document.createElement('div');row.className='suite-result '+(success?'passed':'failed');
+    const title=document.createElement('strong');title.textContent=`${success?'✓':'✕'} ${entry.name||'Case '+(i+1)}`;
+    const details=document.createElement('code');details.textContent=success?'Expected output matched':`Expected: ${formatJSON(entry.expected)}\nReceived: ${result.error?.message||formatJSON(result.value)}`;
+    row.append(title,details);$('suite-results').append(row);
+  }
+  $('suite-summary').textContent=`${passed}/${cases.length} tests passed`;
+}
 async function run(){
   clearTimeout(analyzeTimer);status($('execution-status'),'Running…');$('error-detail').hidden=true;workspaceStatus('Running expression');
   try{
@@ -154,7 +230,7 @@ async function run(){
     $('result-json').textContent=formatJSON(result.value)??'undefined';$('result-type').textContent=result.valueType;
     $('result-time').textContent=`${result.elapsedMs??0} ms`;
     $('assertion').textContent=result.assertion?(passed?'✓ Passed':'✕ Failed'):'Not set';
-    $('error-detail').hidden=true;renderTable(result.value);selectResultView(resultView);workspaceStatus(passed===false?'Assertion failed':'Run complete',passed===false);
+    $('error-detail').hidden=true;renderTable(result.value);$('result-tree').replaceChildren();makeTree(result.value,$('result-tree'));$('export-csv').disabled=!Array.isArray(result.value)||!result.value.length||!result.value.every(v=>v&&typeof v==='object'&&!Array.isArray(v));renderTraces(result);selectResultView(resultView);workspaceStatus(passed===false?'Assertion failed':'Run complete',passed===false);
     history.unshift({formula:payload.formula,platform:payload.platform,inputs:payload.inputs,expected:payload.expected,time:new Date().toISOString(),passed:passed??true});
     history=history.slice(0,15);saveHistory();renderHistory();
   }catch(error){showError(error.message);}
@@ -211,14 +287,14 @@ function setPlatform(){
   $('locale').disabled=!canvas;
   for(const b of document.querySelectorAll('[data-platform]')){const active=b.dataset.platform===$('platform').value;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));}
   status($('formula-status'),'Not validated');
-  updateEditor();
+  renderFunctionCatalog();updateEditor();
 }
 async function loadExample(example){
   selectedExample=example.index??examples.indexOf(example);inputs=structuredClone(example.inputs);$('input-fields').replaceChildren();$('platform').value=example.platform;$('formula').value=example.formula;
   $('expected').value=example.expected===undefined?'':formatJSON(example.expected);setPlatform();showScenarioDetails(example);renderExamples();await analyze(true);
   $('result-json').textContent='// Run an expression to inspect the return value.';
   $('result-type').textContent='—';$('result-time').textContent='—';$('assertion').textContent='—';status($('execution-status'),'Ready');
-  $('error-detail').hidden=true;$('result-table').replaceChildren();selectResultView('json');activateTab('inputs');workspaceStatus('Scenario loaded');
+  $('error-detail').hidden=true;$('result-table').replaceChildren();$('result-tree').replaceChildren();renderTraces(null);$('export-csv').disabled=true;selectResultView('json');activateTab('inputs');workspaceStatus('Scenario loaded');
 }
 async function init(){
   // Render the library first; later initialization errors must not hide samples.
@@ -233,11 +309,14 @@ async function init(){
   }));
   $('platform').addEventListener('change',async()=>{setPlatform();await analyze(true);});
   $('formula').addEventListener('input',()=>{
+    renderCompletions(false);
     selectedExample=-1;showScenarioDetails();updateEditor();renderExamples();status($('formula-status'),'Edited');workspaceStatus('Unsaved changes');
     clearTimeout(analyzeTimer);analyzeTimer=setTimeout(()=>analyze(true),600);
   });
   $('formula').addEventListener('scroll',syncCodeScroll);
   $('formula').addEventListener('keydown',event=>{
+    if((event.ctrlKey||event.metaKey)&&event.code==='Space'){event.preventDefault();renderCompletions(true);return;}
+    if(event.key==='Escape'){$('completion-list').hidden=true;$('formula').setAttribute('aria-expanded','false');return;}
     if(event.key==='Tab'){event.preventDefault();const el=$('formula'),start=el.selectionStart;el.setRangeText('  ',start,el.selectionEnd,'end');el.dispatchEvent(new Event('input',{bubbles:true}));}
   });
   document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>activateTab(b.dataset.tab)));
@@ -250,6 +329,20 @@ async function init(){
   $('json-modal-text').addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();saveJsonEditor();}});
   $('analyze-button').onclick=async()=>{const valid=await analyze();if(valid)activateTab('inputs');};
   $('run-button').onclick=run;
+  $('function-search').addEventListener('input',renderFunctionCatalog);
+  $('suite-run').onclick=runSuite;
+  $('suite-template').onclick=()=>{
+    try{
+      const payload={name:'Current inputs',inputs:readInputs(),expected:$('expected').value.trim()?parseVal($('expected').value):null};
+      $('suite-cases').value=formatJSON([payload]);activateTab('suite');
+    }catch(error){$('suite-summary').textContent=error.message;}
+  };
+  $('export-csv').onclick=()=>{
+    try{
+      const csv=csvSerialize(lastResult?.value),url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+      const link=document.createElement('a');link.href=url;link.download='powerfx-result.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),2000);
+    }catch(error){workspaceStatus(error.message,true);}
+  };
   $('add-input').onclick=()=>{const key=prompt('Input name (e.g. User, variables:count, outputs:Compose)');if(!key||key.length>120||['__proto__','constructor','prototype'].includes(key))return;preserveInputs();if(!found.some(x=>x.key===key))found.push({key,kind:'custom'});renderInputs();};
   $('clear-history').onclick=()=>{history=[];saveHistory();renderHistory();};
   $('copy-result').onclick=async()=>{
@@ -276,7 +369,7 @@ async function init(){
     if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();run();}
     if(event.key==='/'&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!['INPUT','TEXTAREA'].includes(document.activeElement?.tagName)){event.preventDefault();$('example-search').focus();}
   });
-  renderHistory();renderExamples();await loadExample(examples[0]);
+  renderHistory();renderExamples();renderFunctionCatalog();await loadExample(examples[0]);
   if(staticMode){$('backend-pill').innerHTML='<span class="status-dot"></span>Browser sandbox';$('engine-label').textContent='Browser compatibility subset';}
   else try{const res=await fetch('/api/status');if(!res.ok)throw new Error('No backend');const config=await res.json();
     $('backend-pill').innerHTML='<span class="status-dot"></span>'+(config.nativeCanvas?'Official Power Fx connected':'Local sandbox');

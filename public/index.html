@@ -7,14 +7,14 @@
   <meta name="description" content="Power Fx Playground — a focused, local-first formula workbench for Canvas Power Fx and Power Automate expressions.">
   <title>Power Fx Playground · Expression Workbench</title>
   <link rel="stylesheet" href="./styles.css">
-  <script defer src="./workbench.js?v=0.4.1"></script>
+  <script defer src="./workbench.js?v=0.6.0"></script>
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
       <a class="brand" href="./" aria-label="Power Fx Playground home">
         <span class="product-mark" aria-hidden="true"><span></span><span></span></span>
-        <span class="brand-copy"><strong>Power Fx Playground</strong><small>Expression workbench · v0.4</small></span>
+        <span class="brand-copy"><strong>Power Fx Playground</strong><small>Expression workbench · v0.5</small></span>
       </a>
       <div class="topbar-actions">
         <span class="local-chip" title="Expressions use mock inputs; no tenant connections"><span class="status-dot"></span>Local processing</span>
@@ -78,10 +78,12 @@
             <div class="gutter" aria-hidden="true" id="editor-lines">1</div>
             <div class="code-layer">
               <pre id="syntax-highlight" class="syntax-highlight" aria-hidden="true"></pre>
-              <textarea spellcheck="false" id="formula" aria-label="Expression code editor" placeholder="If(Amount >= 1000, &quot;High priority&quot;, &quot;Standard&quot;)" autocomplete="off" autocapitalize="off" autocorrect="off"></textarea>
+              <textarea spellcheck="false" id="formula" aria-autocomplete="list" aria-controls="completion-list" aria-expanded="false" aria-label="Expression code editor" placeholder="If(Amount >= 1000, &quot;High priority&quot;, &quot;Standard&quot;)" autocomplete="off" autocapitalize="off" autocorrect="off"></textarea>
             </div>
+            <div id="completion-list" class="completion-popup" role="listbox" aria-label="Formula function suggestions" hidden></div>
           </div>
-          <div class="editor-statusline"><span><span class="editor-indicator"></span><span id="editor-platform-hint">Canvas formula</span></span><span><span id="characters">0</span> chars <span class="status-separator">·</span> <span id="line-count">1</span> lines <span class="status-separator">·</span> Ctrl+Enter to run</span></div>
+          <div id="signature-hint" class="signature-hint" role="status" hidden></div>
+          <div class="editor-statusline"><span><span class="editor-indicator"></span><span id="editor-platform-hint">Canvas formula</span></span><span><span id="characters">0</span> chars <span class="status-separator">·</span> <span id="line-count">1</span> lines <span class="status-separator">·</span> Ctrl+Space suggestions <span class="status-separator">·</span> Ctrl+Enter run</span></div>
         </section>
 
         <div class="run-toolbar">
@@ -90,15 +92,16 @@
         </div>
 
         <section class="result-card" aria-labelledby="result-title">
-          <div class="result-toolbar"><div class="result-heading"><span class="panel-kicker">OUTPUT</span><strong id="result-title">Execution result</strong><span id="execution-status" class="mini-status neutral">Ready</span></div><div class="result-actions"><div class="view-tabs" role="tablist" aria-label="Result visualization"><button type="button" role="tab" data-result-view="json" aria-selected="true" class="active">JSON</button><button type="button" role="tab" data-result-view="table" aria-selected="false">Table</button></div><button id="copy-result" class="command-button" type="button">Copy JSON</button></div></div>
+          <div class="result-toolbar"><div class="result-heading"><span class="panel-kicker">OUTPUT</span><strong id="result-title">Execution result</strong><span id="execution-status" class="mini-status neutral">Ready</span></div><div class="result-actions"><div class="view-tabs" role="tablist" aria-label="Result visualization"><button type="button" role="tab" data-result-view="json" aria-selected="true" class="active">JSON</button><button type="button" role="tab" data-result-view="table" aria-selected="false">Table</button><button type="button" role="tab" data-result-view="tree" aria-selected="false">Tree</button></div><button id="export-csv" class="command-button" type="button" disabled title="Export a table result as CSV">CSV</button><button id="copy-result" class="command-button" type="button">Copy JSON</button></div></div>
           <div class="metric-row"><div><label>TYPE</label><strong id="result-type">—</strong></div><div><label>EXECUTION</label><strong id="result-time">—</strong></div><div><label>ASSERTION</label><strong id="assertion">—</strong></div></div>
-          <div class="result-body"><pre id="result-json" class="result-json" aria-live="polite">// Run an expression to inspect the return value.</pre><div id="result-table" class="result-table-wrap" hidden></div><p id="error-detail" class="error-detail" role="alert" hidden></p></div>
+          <div class="result-body"><pre id="result-json" class="result-json" aria-live="polite">// Run an expression to inspect the return value.</pre><div id="result-table" class="result-table-wrap" hidden></div><div id="result-tree" class="result-tree" hidden></div><p id="error-detail" class="error-detail" role="alert" hidden></p></div>
+          <div id="trace-panel" class="trace-panel" hidden><div class="trace-header"><strong>Simulated Trace events <span id="trace-count">0</span></strong><small>Local diagnostics only · No Live Monitor or Application Insights telemetry</small></div><div id="trace-events" class="trace-events"></div></div>
           <div class="result-footnote"><span class="info-glyph">i</span>Sandbox results are simulated; platform connectors and tenant actions are not executed.</div>
         </section>
       </main>
 
       <aside class="inspector panel" aria-label="Expression inspector">
-        <div class="inspector-tabs" role="tablist" aria-label="Inspector panels"><button type="button" role="tab" class="active" data-tab="inputs" aria-selected="true">Inputs <span id="input-count" class="counter">0</span></button><button type="button" role="tab" data-tab="tests" aria-selected="false">Test</button><button type="button" role="tab" data-tab="help" aria-selected="false">Guide</button></div>
+        <div class="inspector-tabs" role="tablist" aria-label="Inspector panels"><button type="button" role="tab" class="active" data-tab="inputs" aria-selected="true">Inputs <span id="input-count" class="counter">0</span></button><button type="button" role="tab" data-tab="tests" aria-selected="false">Test</button><button type="button" role="tab" data-tab="suite" aria-selected="false">Suite</button><button type="button" role="tab" data-tab="help" aria-selected="false">Guide</button></div>
         <div class="inspector-content">
           <section class="inspector-pane" id="tab-inputs" role="tabpanel" aria-label="Input parameters">
             <span class="panel-kicker">TEST CONTEXT</span><h2>Input parameters</h2><p class="inspector-description">Variables and outputs referenced in the formula appear here. Drag the bottom-right corner to resize a JSON field, or use Expand for a full editor.</p>
@@ -114,17 +117,26 @@
             <p class="input-hint">Examples: <code>150</code>, <code>true</code>, <code>"Hello"</code>, <code>[1,2,3]</code>. Leave blank to run without asserting.</p>
             <div class="panel-tip"><strong>How tests work</strong><p>Each run compares the returned value to the expected JSON using structural equality. Results appear in Output.</p></div>
           </section>
+          <section class="inspector-pane" id="tab-suite" role="tabpanel" aria-label="Batch test cases" hidden>
+            <span class="panel-kicker">REGRESSION TESTS</span><h2>Test matrix</h2><p class="inspector-description">Run the current expression against multiple input datasets. Each case requires <code>inputs</code> and <code>expected</code>; maximum 25 cases.</p>
+            <label class="field-label" for="suite-cases">TEST CASES (JSON ARRAY)</label>
+            <textarea id="suite-cases" class="suite-editor" spellcheck="false" aria-label="Test suite JSON array" placeholder='[{"name":"Happy path","inputs":{},"expected":true}]'></textarea>
+            <div class="suite-toolbar"><button id="suite-template" class="command-button" type="button">Use current inputs</button><button id="suite-run" class="primary-button" type="button">Run all tests</button></div>
+            <p id="suite-summary" class="suite-summary" role="status">Prepare a test matrix to compare multiple outputs.</p>
+            <div id="suite-results" class="suite-results" aria-live="polite"></div>
+          </section>
           <section class="inspector-pane" id="tab-help" role="tabpanel" aria-label="Usage guide" hidden>
             <span class="panel-kicker">REFERENCE</span><h2>Quick guide</h2><p class="inspector-description">A quick reference to the expression sandbox and its execution limitations.</p>
             <div class="guide-card"><strong>Power Apps · Canvas</strong><p>Test pure Power Fx formulas such as <code>If</code>, <code>Filter</code>, <code>LookUp</code> and <code>Sum</code>. Local mode supports a subset of the language.</p><a href="https://learn.microsoft.com/en-us/power-platform/power-fx/overview" target="_blank" rel="noopener noreferrer">Power Fx documentation ↗</a></div>
             <div class="guide-card"><strong>Power Automate · Cloud flow</strong><p>Test Workflow Definition Language expressions such as <code>concat</code>, <code>variables</code>, <code>outputs</code> and <code>triggerBody</code>.</p><a href="https://learn.microsoft.com/en-us/azure/logic-apps/expression-functions-reference" target="_blank" rel="noopener noreferrer">WDL functions reference ↗</a></div>
+            <div class="function-reference"><label for="function-search" class="field-label">LOCAL FUNCTION REFERENCE</label><input id="function-search" type="search" placeholder="Find a function (e.g. Filter)" aria-label="Search supported functions"><p class="input-hint">Listed functions are implemented in the local browser subset, not a full Power Apps runtime. Select one to insert it into the editor.</p><div id="function-list" class="function-list"></div></div>
             <div class="guide-card"><strong>Official Power Fx evaluation</strong><p>For higher Canvas fidelity, run the optional .NET evaluator locally. The public GitHub Pages site uses the browser subset.</p><a href="https://github.com/ECas95/powerfx-playground#quick-start-no-dependencies" target="_blank" rel="noopener noreferrer">Setup guide ↗</a></div>
           </section>
         </div>
         <div class="inspector-footer"><button id="import-button" type="button" class="command-button">Import scenario</button><button id="export-button" type="button" class="command-button">Export JSON</button><input id="scenario-file" type="file" accept=".json,application/json" hidden></div>
       </aside>
     </div>
-    <footer class="statusbar"><div><span class="ready-dot"></span><strong id="workspace-status">Ready</strong><span class="statusbar-divider"></span><span>Power Fx Playground v0.4.1</span></div><div><span>Open source · MIT</span><span class="statusbar-divider"></span><span>Independent of Canvas App Visualizer</span></div></footer>
+    <footer class="statusbar"><div><span class="ready-dot"></span><strong id="workspace-status">Ready</strong><span class="statusbar-divider"></span><span>Power Fx Playground v0.6.0</span></div><div><span>Open source · MIT</span><span class="statusbar-divider"></span><span>Independent of Canvas App Visualizer</span></div></footer>
   </div>
   <dialog id="json-editor-dialog" class="json-editor-dialog" aria-labelledby="json-dialog-title">
     <div class="json-modal-layout">
@@ -137,6 +149,6 @@
       <footer class="json-modal-footer"><span>Ctrl+Enter to apply · Esc to cancel</span><div><button type="button" id="json-editor-format" class="command-button">Format JSON</button><button type="button" id="json-editor-save" class="primary-button">Apply changes</button></div></footer>
     </div>
   </dialog>
-  <script defer src="./boot-guard.js?v=0.4.1"></script>
+  <script defer src="./boot-guard.js?v=0.6.0"></script>
 </body>
 </html>
