@@ -129,6 +129,26 @@ const scenarios = [
   {"id":"canvas-trace","name":"Trace: approval diagnostics","group":"Developer diagnostics","level":"Advanced","platform":"canvas","description":"Emulate behavior formula traces; see the local diagnostics event, not actual telemetry.","formula":"Trace(\"Escalated approval\",TraceSeverity.Warning,{RequestId:\"APR-509\",Stage:\"Finance\"}); \"Escalated\"","inputs":{},"expected":"Escalated"},
   {"id":"canvas-trace-with","name":"With + Trace: scoped diagnostic","group":"Developer diagnostics","level":"Advanced","platform":"canvas","description":"Emulate diagnostics from a record scope with custom trace properties.","formula":"With({RequestId:\"RQ-447\"},Trace(RequestId,TraceSeverity.Information,{Origin:\"RequestHub\"}))","inputs":{},"expected":null},
   {"id":"canvas-regex-parse-array","name":"ForAll + Match: decode device IDs","group":"Validation & regex","level":"Advanced","platform":"canvas","description":"Extract IDs with regular expressions within a scoped table operation.","formula":"ForAll(Devices As d,Match(d.Code,\"DEV-(?<id>\\d+)\").id)","inputs":{"Devices":[{"Code":"DEV-700"},{"Code":"DEV-701"}]},"expected":["700","701"]},
+
+  // v0.7: table shaping with modern and legacy Power Fx column references.
+  {"id":"canvas-group-region","name":"GroupBy: revenue regions","description":"Create a nested sales table for each geographic region.","formula":"GroupBy(Orders, Region, Rows)","inputs":{"Orders":[{"Id":"SO-101","Region":"North","Status":"Open","Total":300,"Rep":"Ava"},{"Id":"SO-102","Region":"South","Status":"Open","Total":125,"Rep":"Luis"},{"Id":"SO-103","Region":"North","Status":"Paid","Total":250,"Rep":"Ava"},{"Id":"SO-104","Region":"South","Status":"Paid","Total":450,"Rep":"Ana"},{"Id":"SO-105","Region":"North","Status":"Open","Total":150,"Rep":"Luis"}]},"expected":[{"Region":"North","Rows":[{"Id":"SO-101","Status":"Open","Total":300,"Rep":"Ava"},{"Id":"SO-103","Status":"Paid","Total":250,"Rep":"Ava"},{"Id":"SO-105","Status":"Open","Total":150,"Rep":"Luis"}]},{"Region":"South","Rows":[{"Id":"SO-102","Status":"Open","Total":125,"Rep":"Luis"},{"Id":"SO-104","Status":"Paid","Total":450,"Rep":"Ana"}]}],"group":"Table shaping & reporting","level":"Advanced","platform":"canvas"},
+  {"id":"canvas-group-multikey","name":"GroupBy: region + status","description":"Group by multiple dimensions for a revenue drilldown.","formula":"GroupBy(Orders, Region, Status, Rows)","inputs":{"Orders":[{"Id":"SO-101","Region":"North","Status":"Open","Total":300,"Rep":"Ava"},{"Id":"SO-102","Region":"South","Status":"Open","Total":125,"Rep":"Luis"},{"Id":"SO-103","Region":"North","Status":"Paid","Total":250,"Rep":"Ava"},{"Id":"SO-104","Region":"South","Status":"Paid","Total":450,"Rep":"Ana"},{"Id":"SO-105","Region":"North","Status":"Open","Total":150,"Rep":"Luis"}]},"expected":[{"Region":"North","Status":"Open","Rows":[{"Id":"SO-101","Total":300,"Rep":"Ava"},{"Id":"SO-105","Total":150,"Rep":"Luis"}]},{"Region":"South","Status":"Open","Rows":[{"Id":"SO-102","Total":125,"Rep":"Luis"}]},{"Region":"North","Status":"Paid","Rows":[{"Id":"SO-103","Total":250,"Rep":"Ava"}]},{"Region":"South","Status":"Paid","Rows":[{"Id":"SO-104","Total":450,"Rep":"Ana"}]}],"group":"Table shaping & reporting","level":"Advanced","platform":"canvas"},
+  {"id":"canvas-group-legacy","name":"GroupBy: quoted legacy fields","description":"Exercise legacy quoted column-name syntax.","formula":"GroupBy(Orders, \"Region\", \"Rows\")","inputs":{"Orders":[{"Id":"SO-101","Region":"North","Status":"Open","Total":300,"Rep":"Ava"},{"Id":"SO-102","Region":"South","Status":"Open","Total":125,"Rep":"Luis"},{"Id":"SO-103","Region":"North","Status":"Paid","Total":250,"Rep":"Ava"},{"Id":"SO-104","Region":"South","Status":"Paid","Total":450,"Rep":"Ana"},{"Id":"SO-105","Region":"North","Status":"Open","Total":150,"Rep":"Luis"}]},"expected":[{"Region":"North","Rows":[{"Id":"SO-101","Status":"Open","Total":300,"Rep":"Ava"},{"Id":"SO-103","Status":"Paid","Total":250,"Rep":"Ava"},{"Id":"SO-105","Status":"Open","Total":150,"Rep":"Luis"}]},{"Region":"South","Rows":[{"Id":"SO-102","Status":"Open","Total":125,"Rep":"Luis"},{"Id":"SO-104","Status":"Paid","Total":450,"Rep":"Ana"}]}],"group":"Table shaping & reporting","level":"Advanced","platform":"canvas"},
+  {"id":"canvas-region-total","name":"GroupBy + AddColumns + Sum","description":"Calculate total revenue per region from nested records.","formula":"DropColumns(AddColumns(GroupBy(Orders, Region, Rows), TotalSales, Sum(Rows, Total)), Rows)","inputs":{"Orders":[{"Id":"SO-101","Region":"North","Status":"Open","Total":300,"Rep":"Ava"},{"Id":"SO-102","Region":"South","Status":"Open","Total":125,"Rep":"Luis"},{"Id":"SO-103","Region":"North","Status":"Paid","Total":250,"Rep":"Ava"},{"Id":"SO-104","Region":"South","Status":"Paid","Total":450,"Rep":"Ana"},{"Id":"SO-105","Region":"North","Status":"Open","Total":150,"Rep":"Luis"}]},"expected":[{"Region":"North","TotalSales":700},{"Region":"South","TotalSales":575}],"group":"Table shaping & reporting","level":"Advanced","platform":"canvas"},
+  {"id":"canvas-region-count","name":"GroupBy + CountRows","description":"Count how many sales records exist per region.","formula":"DropColumns(AddColumns(GroupBy(Orders, Region, Rows), Count, CountRows(Rows)), Rows)","inputs":{"Orders":[{"Id":"SO-101","Region":"North","Status":"Open","Total":300,"Rep":"Ava"},{"Id":"SO-102","Region":"South","Status":"Open","Total":125,"Rep":"Luis"},{"Id":"SO-103","Region":"North","Status":"Paid","Total":250,"Rep":"Ava"},{"Id":"SO-104","Region":"South","Status":"Paid","Total":450,"Rep":"Ana"},{"Id":"SO-105","Region":"North","Status":"Open","Total":150,"Rep":"Luis"}]},"expected":[{"Region":"North","Count":3},{"Region":"South","Count":2}],"group":"Table shaping & reporting","level":"Advanced","platform":"canvas"},
+  {"id":"canvas-ungroup-rehydrate","name":"Ungroup: flatten nested sales","description":"Restore a flat table from grouped data (group order is preserved, not necessarily original interleaving).","formula":"Ungroup(GroupBy(Orders, Region, Rows), Rows)","inputs":{"Orders":[{"Id":"SO-101","Region":"North","Status":"Open","Total":300,"Rep":"Ava"},{"Id":"SO-102","Region":"South","Status":"Open","Total":125,"Rep":"Luis"},{"Id":"SO-103","Region":"North","Status":"Paid","Total":250,"Rep":"Ava"},{"Id":"SO-104","Region":"South","Status":"Paid","Total":450,"Rep":"Ana"},{"Id":"SO-105","Region":"North","Status":"Open","Total":150,"Rep":"Luis"}]},"expected":[{"Id":"SO-101","Region":"North","Status":"Open","Total":300,"Rep":"Ava"},{"Id":"SO-103","Region":"North","Status":"Paid","Total":250,"Rep":"Ava"},{"Id":"SO-105","Region":"North","Status":"Open","Total":150,"Rep":"Luis"},{"Id":"SO-102","Region":"South","Status":"Open","Total":125,"Rep":"Luis"},{"Id":"SO-104","Region":"South","Status":"Paid","Total":450,"Rep":"Ana"}],"group":"Table shaping & reporting","level":"Advanced","platform":"canvas"},
+  {"id":"canvas-ungroup-filter","name":"Ungroup + Filter: regional export","description":"Keep only one region in a grouped collection and then flatten for export.","formula":"Ungroup(Filter(GroupBy(Orders, Region, Rows), Region=\"North\"), Rows)","inputs":{"Orders":[{"Id":"SO-101","Region":"North","Status":"Open","Total":300,"Rep":"Ava"},{"Id":"SO-102","Region":"South","Status":"Open","Total":125,"Rep":"Luis"},{"Id":"SO-103","Region":"North","Status":"Paid","Total":250,"Rep":"Ava"},{"Id":"SO-104","Region":"South","Status":"Paid","Total":450,"Rep":"Ana"},{"Id":"SO-105","Region":"North","Status":"Open","Total":150,"Rep":"Luis"}]},"expected":[{"Id":"SO-101","Region":"North","Status":"Open","Total":300,"Rep":"Ava"},{"Id":"SO-103","Region":"North","Status":"Paid","Total":250,"Rep":"Ava"},{"Id":"SO-105","Region":"North","Status":"Open","Total":150,"Rep":"Luis"}],"group":"Table shaping & reporting","level":"Advanced","platform":"canvas"},
+  {"id":"canvas-rename-customer","name":"RenameColumns: integration schema","description":"Adapt contact names to a target API schema without modifying the source.","formula":"RenameColumns(Contacts, Name, FullName)","inputs":{"Contacts":[{"Name":"Ada","Email":"a@example.test"},{"Name":"Luis","Email":"l@example.test"}]},"expected":[{"FullName":"Ada","Email":"a@example.test"},{"FullName":"Luis","Email":"l@example.test"}],"group":"Table shaping & reporting","level":"Advanced","platform":"canvas"},
+  {"id":"canvas-rename-multiple","name":"RenameColumns: sales DTO","description":"Rename multiple fields to business-oriented API names.","formula":"RenameColumns(Orders, Region, SalesRegion, Total, Amount)","inputs":{"Orders":[{"Id":"SO-101","Region":"North","Status":"Open","Total":300,"Rep":"Ava"},{"Id":"SO-102","Region":"South","Status":"Open","Total":125,"Rep":"Luis"},{"Id":"SO-103","Region":"North","Status":"Paid","Total":250,"Rep":"Ava"},{"Id":"SO-104","Region":"South","Status":"Paid","Total":450,"Rep":"Ana"},{"Id":"SO-105","Region":"North","Status":"Open","Total":150,"Rep":"Luis"}]},"expected":[{"Id":"SO-101","SalesRegion":"North","Status":"Open","Amount":300,"Rep":"Ava"},{"Id":"SO-102","SalesRegion":"South","Status":"Open","Amount":125,"Rep":"Luis"},{"Id":"SO-103","SalesRegion":"North","Status":"Paid","Amount":250,"Rep":"Ava"},{"Id":"SO-104","SalesRegion":"South","Status":"Paid","Amount":450,"Rep":"Ana"},{"Id":"SO-105","SalesRegion":"North","Status":"Open","Amount":150,"Rep":"Luis"}],"group":"Table shaping & reporting","level":"Advanced","platform":"canvas"},
+  {"id":"canvas-rename-chain","name":"RenameColumns + Filter","description":"Apply a filter after reshaping a collection to prove renamed fields remain accessible.","formula":"Filter(RenameColumns(Orders, Region, SalesRegion), SalesRegion=\"South\")","inputs":{"Orders":[{"Id":"SO-101","Region":"North","Status":"Open","Total":300,"Rep":"Ava"},{"Id":"SO-102","Region":"South","Status":"Open","Total":125,"Rep":"Luis"},{"Id":"SO-103","Region":"North","Status":"Paid","Total":250,"Rep":"Ava"},{"Id":"SO-104","Region":"South","Status":"Paid","Total":450,"Rep":"Ana"},{"Id":"SO-105","Region":"North","Status":"Open","Total":150,"Rep":"Luis"}]},"expected":[{"Id":"SO-102","SalesRegion":"South","Status":"Open","Total":125,"Rep":"Luis"},{"Id":"SO-104","SalesRegion":"South","Status":"Paid","Total":450,"Rep":"Ana"}],"group":"Table shaping & reporting","level":"Advanced","platform":"canvas"},
+  {"id":"canvas-multisort","name":"SortByColumns: lead ranking","description":"Stable prioritization using descending score and ascending company name.","formula":"SortByColumns(Leads, \"Score\", SortOrder.Descending, \"Company\", SortOrder.Ascending)","inputs":{"Leads":[{"Company":"Northwind","Score":78,"Tier":"Gold","Owner":"Mia"},{"Company":"Fabrikam","Score":95,"Tier":"Gold","Owner":"Ava"},{"Company":"Contoso","Score":95,"Tier":"Silver","Owner":"Mia"},{"Company":"Bluebird","Score":61,"Tier":"Gold","Owner":"Ava"}]},"expected":[{"Company":"Contoso","Score":95,"Tier":"Silver","Owner":"Mia"},{"Company":"Fabrikam","Score":95,"Tier":"Gold","Owner":"Ava"},{"Company":"Northwind","Score":78,"Tier":"Gold","Owner":"Mia"},{"Company":"Bluebird","Score":61,"Tier":"Gold","Owner":"Ava"}],"group":"Table shaping & reporting","level":"Advanced","platform":"canvas"},
+  {"id":"canvas-custom-sort","name":"SortByColumns: incident priority","description":"Sort categorical severity by a custom business-defined order.","formula":"SortByColumns(Tickets, \"Severity\", [\"Critical\", \"High\", \"Medium\", \"Low\"])","inputs":{"Tickets":[{"Id":"INC-1","Severity":"Low"},{"Id":"INC-2","Severity":"High"},{"Id":"INC-3","Severity":"Critical"},{"Id":"INC-4","Severity":"Medium"}]},"expected":[{"Id":"INC-3","Severity":"Critical"},{"Id":"INC-2","Severity":"High"},{"Id":"INC-4","Severity":"Medium"},{"Id":"INC-1","Severity":"Low"}],"group":"Table shaping & reporting","level":"Advanced","platform":"canvas"},
+  {"id":"canvas-filter-sort","name":"Filter + SortByColumns","description":"Rank unresolved sales orders by value for account management.","formula":"SortByColumns(Filter(Orders, Status=\"Open\"), \"Total\", SortOrder.Descending)","inputs":{"Orders":[{"Id":"SO-101","Region":"North","Status":"Open","Total":300,"Rep":"Ava"},{"Id":"SO-102","Region":"South","Status":"Open","Total":125,"Rep":"Luis"},{"Id":"SO-103","Region":"North","Status":"Paid","Total":250,"Rep":"Ava"},{"Id":"SO-104","Region":"South","Status":"Paid","Total":450,"Rep":"Ana"},{"Id":"SO-105","Region":"North","Status":"Open","Total":150,"Rep":"Luis"}]},"expected":[{"Id":"SO-101","Region":"North","Status":"Open","Total":300,"Rep":"Ava"},{"Id":"SO-105","Region":"North","Status":"Open","Total":150,"Rep":"Luis"},{"Id":"SO-102","Region":"South","Status":"Open","Total":125,"Rep":"Luis"}],"group":"Table shaping & reporting","level":"Advanced","platform":"canvas"},
+  {"id":"canvas-stable-sort","name":"SortByColumns: stable tie-break","description":"Preserve input order where scores and names tie.","formula":"SortByColumns(Leads, \"Score\", SortOrder.Descending)","inputs":{"Leads":[{"Company":"Northwind","Score":78,"Tier":"Gold","Owner":"Mia"},{"Company":"Fabrikam","Score":95,"Tier":"Gold","Owner":"Ava"},{"Company":"Contoso","Score":95,"Tier":"Silver","Owner":"Mia"},{"Company":"Bluebird","Score":61,"Tier":"Gold","Owner":"Ava"}]},"expected":[{"Company":"Fabrikam","Score":95,"Tier":"Gold","Owner":"Ava"},{"Company":"Contoso","Score":95,"Tier":"Silver","Owner":"Mia"},{"Company":"Northwind","Score":78,"Tier":"Gold","Owner":"Mia"},{"Company":"Bluebird","Score":61,"Tier":"Gold","Owner":"Ava"}],"group":"Table shaping & reporting","level":"Advanced","platform":"canvas"},
+  {"id":"canvas-group-rank","name":"GroupBy + Sum + multi-table sort","description":"Create a small regional leaderboard by aggregating and sorting groups.","formula":"SortByColumns(DropColumns(AddColumns(GroupBy(Orders, Region, Rows), Revenue, Sum(Rows, Total)), Rows), \"Revenue\", SortOrder.Descending)","inputs":{"Orders":[{"Id":"SO-101","Region":"North","Status":"Open","Total":300,"Rep":"Ava"},{"Id":"SO-102","Region":"South","Status":"Open","Total":125,"Rep":"Luis"},{"Id":"SO-103","Region":"North","Status":"Paid","Total":250,"Rep":"Ava"},{"Id":"SO-104","Region":"South","Status":"Paid","Total":450,"Rep":"Ana"},{"Id":"SO-105","Region":"North","Status":"Open","Total":150,"Rep":"Luis"}]},"expected":[{"Region":"North","Revenue":700},{"Region":"South","Revenue":575}],"group":"Table shaping & reporting","level":"Advanced","platform":"canvas"},
+  {"id":"canvas-group-filter-combo","name":"With + GroupBy + filtered CountRows","description":"Use a scoped regional summary and select groups with at least three sales.","formula":"With({Groups:GroupBy(Orders, Region, Rows)},Filter(AddColumns(Groups, N, CountRows(Rows)), N>=3))","inputs":{"Orders":[{"Id":"SO-101","Region":"North","Status":"Open","Total":300,"Rep":"Ava"},{"Id":"SO-102","Region":"South","Status":"Open","Total":125,"Rep":"Luis"},{"Id":"SO-103","Region":"North","Status":"Paid","Total":250,"Rep":"Ava"},{"Id":"SO-104","Region":"South","Status":"Paid","Total":450,"Rep":"Ana"},{"Id":"SO-105","Region":"North","Status":"Open","Total":150,"Rep":"Luis"}]},"expected":[{"Region":"North","Rows":[{"Id":"SO-101","Status":"Open","Total":300,"Rep":"Ava"},{"Id":"SO-103","Status":"Paid","Total":250,"Rep":"Ava"},{"Id":"SO-105","Status":"Open","Total":150,"Rep":"Luis"}],"N":3}],"group":"Table shaping & reporting","level":"Advanced","platform":"canvas"},
+  {"id":"canvas-sort-rename","name":"RenameColumns + SortByColumns","description":"Rename scoring field and sort CRM prospects in a single formula.","formula":"SortByColumns(RenameColumns(Leads, Score, FitScore), \"FitScore\", SortOrder.Descending)","inputs":{"Leads":[{"Company":"Northwind","Score":78,"Tier":"Gold","Owner":"Mia"},{"Company":"Fabrikam","Score":95,"Tier":"Gold","Owner":"Ava"},{"Company":"Contoso","Score":95,"Tier":"Silver","Owner":"Mia"},{"Company":"Bluebird","Score":61,"Tier":"Gold","Owner":"Ava"}]},"expected":[{"Company":"Fabrikam","FitScore":95,"Tier":"Gold","Owner":"Ava"},{"Company":"Contoso","FitScore":95,"Tier":"Silver","Owner":"Mia"},{"Company":"Northwind","FitScore":78,"Tier":"Gold","Owner":"Mia"},{"Company":"Bluebird","FitScore":61,"Tier":"Gold","Owner":"Ava"}],"group":"Table shaping & reporting","level":"Advanced","platform":"canvas"},
+  {"id":"canvas-group-show","name":"GroupBy + ShowColumns","description":"Return a compact list of regions containing grouped sales.","formula":"ShowColumns(GroupBy(Orders, Region, Rows), Region)","inputs":{"Orders":[{"Id":"SO-101","Region":"North","Status":"Open","Total":300,"Rep":"Ava"},{"Id":"SO-102","Region":"South","Status":"Open","Total":125,"Rep":"Luis"},{"Id":"SO-103","Region":"North","Status":"Paid","Total":250,"Rep":"Ava"},{"Id":"SO-104","Region":"South","Status":"Paid","Total":450,"Rep":"Ana"},{"Id":"SO-105","Region":"North","Status":"Open","Total":150,"Rep":"Luis"}]},"expected":[{"Region":"North"},{"Region":"South"}],"group":"Table shaping & reporting","level":"Advanced","platform":"canvas"},
 ];
 
 const examples = scenarios;
@@ -160,6 +180,10 @@ const functions=[
   [C,'Average','Average(records, formula)','Average a numeric column expression','Tables'],
   [C,'AddColumns','AddColumns(records, "NewColumn", expression)','Add computed columns without modifying source','Tables'],
   [C,'Distinct','Distinct(records, expression)','Remove duplicate values','Tables'],
+  [C,'GroupBy','GroupBy(records, Region, Rows)','Group records by one or multiple columns into nested tables','Tables'],
+  [C,'Ungroup','Ungroup(records, Rows)','Expand grouped records to a flat table','Tables'],
+  [C,'RenameColumns','RenameColumns(records, OldName, NewName)','Rename schema columns without mutating the source','Tables'],
+  [C,'SortByColumns','SortByColumns(records, "Priority", SortOrder.Descending)','Stable multi-column sort; supports explicit order table','Tables'],
   [C,'Search','Search(records, text, "Column1", "Column2")','Search several text fields','Tables'],
   [C,'ShowColumns','ShowColumns(records, "Column")','Project selected fields','Tables'],
   [C,'DropColumns','DropColumns(records, "Column")','Remove selected fields','Tables'],
@@ -496,6 +520,69 @@ async function runSuite(){
   }
   $('suite-summary').textContent=`${passed}/${cases.length} tests passed`;
 }
+// Built-in regression runner: never uses the user's current formula, inputs, or tenant.
+// When a .NET backend is enabled, engine:local bypasses it for deterministic baselines.
+let libraryRunId=0,libraryReport=null;
+function libraryScope(){
+  const scope=$('library-scope').value;
+  if(scope==='canvas'||scope==='flow')return examples.filter(sample=>sample.platform===scope);
+  if(scope==='visible'){
+    const search=$('example-search').value.trim().toLowerCase(),level=$('level-filter').value;
+    return examples.filter(sample=>(level==='all'||sample.level===level)&&(!search||`${sample.name} ${sample.group} ${sample.level} ${sample.description} ${sample.formula}`.toLowerCase().includes(search)));
+  }
+  return examples;
+}
+function libraryButtons(running){
+  $('library-run').disabled=running;
+  $('library-cancel').disabled=!running;
+}
+function cancelLibrary(){
+  libraryRunId++;libraryButtons(false);
+  $('library-summary').textContent='Library run cancelled. Start again to get a complete report.';
+  $('library-download').disabled=true;libraryReport=null;
+}
+async function runLibrary(){
+  const scenarios=libraryScope();if(!scenarios.length){$('library-summary').textContent='No scenarios match the selected scope.';return;}
+  const id=++libraryRunId;
+  libraryReport=null;$('library-download').disabled=true;$('library-results').replaceChildren();libraryButtons(true);
+  $('library-progress').value=0;
+  const results=[],counts={canvas:{passed:0,failed:0},flow:{passed:0,failed:0}};
+  try{
+    for(let i=0;i<scenarios.length;i++){
+      if(id!==libraryRunId)return;
+      const item=scenarios[i];let output;
+      try{output=await request('/api/evaluate',{formula:item.formula,platform:item.platform,inputs:item.inputs,expected:item.expected,engine:'local'});}
+      catch(error){output={success:false,error:{message:error.message}};}
+      if(id!==libraryRunId)return;
+      const passed=output.success===true&&output.assertion?.passed===true;
+      counts[item.platform][passed?'passed':'failed']++;
+      results.push({id:item.id,name:item.name,platform:item.platform,passed,expected:item.expected,received:output.value??null,error:output.error?.message??null});
+      const completed=i+1;
+      $('library-progress').value=Math.round(completed/scenarios.length*100);
+      $('library-summary').textContent=`Checking ${completed}/${scenarios.length} · ${results.filter(r=>r.passed).length} passed`;
+      // Give the UI a chance to paint and expose an actionable Cancel button.
+      if(completed%8===0)await new Promise(resolve=>setTimeout(resolve,0));
+    }
+    const passed=results.filter(row=>row.passed).length,failed=results.length-passed;
+    libraryReport={version:1,engine:'local',date:new Date().toISOString(),total:results.length,passed,failed,byPlatform:counts,results};
+    $('library-summary').textContent=`${passed}/${results.length} passed · Canvas ${counts.canvas.passed}/${counts.canvas.passed+counts.canvas.failed} · WDL ${counts.flow.passed}/${counts.flow.passed+counts.flow.failed}`;
+    $('library-download').disabled=false;
+    const area=$('library-results');area.replaceChildren();
+    if(failed===0){const good=document.createElement('p');good.className='library-success';good.textContent='All selected examples matched their expected local outputs.';area.append(good);}
+    else for(const entry of results.filter(row=>!row.passed).slice(0,30)){
+      const item=document.createElement('article');item.className='suite-result failed';
+      const title=document.createElement('strong');title.textContent=`✕ ${entry.platform} · ${entry.name}`;
+      const detail=document.createElement('code');detail.textContent=entry.error||`Expected ${formatJSON(entry.expected)}\nReceived ${formatJSON(entry.received)}`;
+      item.append(title,detail);area.append(item);
+    }
+    workspaceStatus(failed?`${failed} library checks failed`:'Library regression passed',failed>0);
+  }finally{if(id===libraryRunId)libraryButtons(false);}
+}
+function downloadLibraryReport(){
+  if(!libraryReport)return;
+  const blob=new Blob([formatJSON(libraryReport)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='powerfx-library-regression.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
 async function run(){
   clearTimeout(analyzeTimer);status($('execution-status'),'Running…');$('error-detail').hidden=true;workspaceStatus('Running expression');
   try{
@@ -610,6 +697,9 @@ async function init(){
   $('run-button').onclick=run;
   $('function-search').addEventListener('input',renderFunctionCatalog);
   $('suite-run').onclick=runSuite;
+  $('library-run').onclick=runLibrary;
+  $('library-cancel').onclick=cancelLibrary;
+  $('library-download').onclick=downloadLibraryReport;
   $('suite-template').onclick=()=>{
     try{
       const payload={name:'Current inputs',inputs:readInputs(),expected:$('expected').value.trim()?parseVal($('expected').value):null};

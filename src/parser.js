@@ -167,6 +167,14 @@ export function analyze(ast,mode='canvas') {
           walk(n.args[1],n.args[0]?.type!=='record'&&n.args[0]?.type!=='alias',b);
           return;
         }
+        // Column tokens are schema names in modern Canvas syntax, not free inputs.
+        if(mode==='canvas'&&['groupby','ungroup','renamecolumns','sortbycolumns','showcolumns','dropcolumns','search'].includes(name)){
+          walk(n.args[0],local,bound);
+          // Search's second argument is the search term; GroupBy and shaping
+          // functions take only column names in subsequent positions.
+          if(name==='search')walk(n.args[1],local,bound);
+          return;
+        }
         const rowFunctions=new Set(['filter','lookup','sum','average','forall','addcolumns','countif','sort','distinct','min','max']);
         if(mode==='canvas'&&rowFunctions.has(name)&&n.args.length>1){
           const source=n.args[0],alias=source?.type==='alias'?source.alias:null;

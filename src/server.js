@@ -12,12 +12,12 @@ async function body(req){let raw='';for await(const part of req){raw+=part.toStr
 const server=http.createServer(async(req,res)=>{
   try{
     const pathname=new URL(req.url,'http://localhost').pathname;
-    if(req.method==='GET'&&pathname==='/api/status')return json(res,{ok:true,nativeCanvas:Boolean(remote),version:'0.4.1',flow:'WDL subset',localCanvas:'Power Fx subset'});
+    if(req.method==='GET'&&pathname==='/api/status')return json(res,{ok:true,nativeCanvas:Boolean(remote),version:'0.7.0',flow:'WDL subset',localCanvas:'Power Fx subset'});
     if(req.method==='POST'&&['/api/evaluate','/api/analyze'].includes(pathname)){
       const data=await body(req);
       if(typeof data.formula!=='string')return json(res,{success:false,error:{message:'Falta formula'}},400);
       if(pathname==='/api/analyze')return json(res,inspect(data));
-      if(data.platform==='canvas'&&remote){
+      if(data.platform==='canvas'&&remote&&data.engine!=='local'){
         const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),3500);
         try{
           const response=await fetch(new URL('/evaluate',remote),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:controller.signal});

@@ -7,14 +7,14 @@
   <meta name="description" content="Power Fx Playground — a focused, local-first formula workbench for Canvas Power Fx and Power Automate expressions.">
   <title>Power Fx Playground · Expression Workbench</title>
   <link rel="stylesheet" href="./styles.css">
-  <script defer src="./workbench.js?v=0.6.0"></script>
+  <script defer src="./workbench.js?v=0.7.0"></script>
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
       <a class="brand" href="./" aria-label="Power Fx Playground home">
         <span class="product-mark" aria-hidden="true"><span></span><span></span></span>
-        <span class="brand-copy"><strong>Power Fx Playground</strong><small>Expression workbench · v0.5</small></span>
+        <span class="brand-copy"><strong>Power Fx Playground</strong><small>Expression workbench · v0.7</small></span>
       </a>
       <div class="topbar-actions">
         <span class="local-chip" title="Expressions use mock inputs; no tenant connections"><span class="status-dot"></span>Local processing</span>
@@ -101,7 +101,7 @@
       </main>
 
       <aside class="inspector panel" aria-label="Expression inspector">
-        <div class="inspector-tabs" role="tablist" aria-label="Inspector panels"><button type="button" role="tab" class="active" data-tab="inputs" aria-selected="true">Inputs <span id="input-count" class="counter">0</span></button><button type="button" role="tab" data-tab="tests" aria-selected="false">Test</button><button type="button" role="tab" data-tab="suite" aria-selected="false">Suite</button><button type="button" role="tab" data-tab="help" aria-selected="false">Guide</button></div>
+        <div class="inspector-tabs" role="tablist" aria-label="Inspector panels"><button type="button" role="tab" class="active" data-tab="inputs" aria-selected="true">Inputs <span id="input-count" class="counter">0</span></button><button type="button" role="tab" data-tab="tests" aria-selected="false">Test</button><button type="button" role="tab" data-tab="suite" aria-selected="false">Suite</button><button type="button" role="tab" data-tab="library" aria-selected="false">Library QA</button><button type="button" role="tab" data-tab="help" aria-selected="false">Guide</button></div>
         <div class="inspector-content">
           <section class="inspector-pane" id="tab-inputs" role="tabpanel" aria-label="Input parameters">
             <span class="panel-kicker">TEST CONTEXT</span><h2>Input parameters</h2><p class="inspector-description">Variables and outputs referenced in the formula appear here. Drag the bottom-right corner to resize a JSON field, or use Expand for a full editor.</p>
@@ -125,6 +125,23 @@
             <p id="suite-summary" class="suite-summary" role="status">Prepare a test matrix to compare multiple outputs.</p>
             <div id="suite-results" class="suite-results" aria-live="polite"></div>
           </section>
+          <section class="inspector-pane" id="tab-library" role="tabpanel" aria-label="Scenario library regression checks" hidden>
+            <span class="panel-kicker">COMPATIBILITY LAB</span><h2>Library QA</h2>
+            <p class="inspector-description">Run the shipped example library as a regression suite. Each scenario uses its own synthetic inputs and compares the returned JSON with a known expected result.</p>
+            <div class="context-note"><span class="note-icon">✓</span><span>Local compatibility baseline only. Does not verify delegation, connectors, or official Power Apps / Power Automate execution.</span></div>
+            <label class="field-label" for="library-scope">TEST SCOPE</label>
+            <select id="library-scope" class="library-select" aria-label="Select regression scope">
+              <option value="all">All examples</option>
+              <option value="canvas">Power Fx · Canvas</option>
+              <option value="flow">Power Automate · WDL</option>
+              <option value="visible">Visible library (search + level)</option>
+            </select>
+            <div class="suite-toolbar library-actions"><button id="library-run" class="primary-button" type="button">Run library checks</button><button id="library-cancel" class="command-button" type="button" disabled>Cancel</button></div>
+            <progress id="library-progress" class="library-progress" max="100" value="0" aria-label="Library test progress"></progress>
+            <p id="library-summary" class="suite-summary" role="status" aria-live="polite">Choose a scope and run the local regression checks.</p>
+            <button id="library-download" class="command-button library-download" type="button" disabled>Export report JSON</button>
+            <div id="library-results" class="suite-results" aria-live="polite"></div>
+          </section>
           <section class="inspector-pane" id="tab-help" role="tabpanel" aria-label="Usage guide" hidden>
             <span class="panel-kicker">REFERENCE</span><h2>Quick guide</h2><p class="inspector-description">A quick reference to the expression sandbox and its execution limitations.</p>
             <div class="guide-card"><strong>Power Apps · Canvas</strong><p>Test pure Power Fx formulas such as <code>If</code>, <code>Filter</code>, <code>LookUp</code> and <code>Sum</code>. Local mode supports a subset of the language.</p><a href="https://learn.microsoft.com/en-us/power-platform/power-fx/overview" target="_blank" rel="noopener noreferrer">Power Fx documentation ↗</a></div>
@@ -136,7 +153,7 @@
         <div class="inspector-footer"><button id="import-button" type="button" class="command-button">Import scenario</button><button id="export-button" type="button" class="command-button">Export JSON</button><input id="scenario-file" type="file" accept=".json,application/json" hidden></div>
       </aside>
     </div>
-    <footer class="statusbar"><div><span class="ready-dot"></span><strong id="workspace-status">Ready</strong><span class="statusbar-divider"></span><span>Power Fx Playground v0.6.0</span></div><div><span>Open source · MIT</span><span class="statusbar-divider"></span><span>Independent of Canvas App Visualizer</span></div></footer>
+    <footer class="statusbar"><div><span class="ready-dot"></span><strong id="workspace-status">Ready</strong><span class="statusbar-divider"></span><span>Power Fx Playground v0.7.0</span></div><div><span>Open source · MIT</span><span class="statusbar-divider"></span><span>Independent of Canvas App Visualizer</span></div></footer>
   </div>
   <dialog id="json-editor-dialog" class="json-editor-dialog" aria-labelledby="json-dialog-title">
     <div class="json-modal-layout">
@@ -149,6 +166,6 @@
       <footer class="json-modal-footer"><span>Ctrl+Enter to apply · Esc to cancel</span><div><button type="button" id="json-editor-format" class="command-button">Format JSON</button><button type="button" id="json-editor-save" class="primary-button">Apply changes</button></div></footer>
     </div>
   </dialog>
-  <script defer src="./boot-guard.js?v=0.6.0"></script>
+  <script defer src="./boot-guard.js?v=0.7.0"></script>
 </body>
 </html>

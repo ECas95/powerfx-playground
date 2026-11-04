@@ -26,8 +26,8 @@ test('GitHub Pages delivers a self-contained classic script and reports missing 
   const html=read('../public/index.html');
   const bundle=read('../public/workbench.js');
   const guard=read('../public/boot-guard.js');
-  assert.match(html,/<script defer src="\.\/workbench\.js\?v=0\.6\.0"><\/script>/);
-  assert.match(html,/<script defer src="\.\/boot-guard\.js\?v=0\.6\.0"><\/script>/);
+  assert.match(html,/<script defer src="\.\/workbench\.js\?v=0\.7\.0"><\/script>/);
+  assert.match(html,/<script defer src="\.\/boot-guard\.js\?v=0\.7\.0"><\/script>/);
   assert.doesNotMatch(html,/<script type="module"/);
   assert.doesNotMatch(bundle,/^import \{scenarios as examples\} from/m);
   assert.match(bundle,/const scenarios = \[/);

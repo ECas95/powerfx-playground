@@ -6,6 +6,16 @@ A standalone, open-source web portal for testing **Power Apps Canvas Power Fx** 
 
 ![Node](https://img.shields.io/badge/Node.js-20%2B-blue) ![.NET](https://img.shields.io/badge/.NET-8%20optional-purple) ![License](https://img.shields.io/badge/License-MIT-green)
 
+## New in v0.7.0 — Compatibility Lab
+
+- **99 executable scenarios** (69 Canvas Power Fx and 30 Power Automate WDL), including 18 new realistic table-shaping cases.
+- **`GroupBy`, `Ungroup`, `RenameColumns`, and `SortByColumns`** are now supported in the **bounded local Canvas evaluator**, with single/multi-column grouping, stable multi-column sorting, custom business priority ordering, and scoped grouping/aggregation examples.
+- The new **Library QA** tab runs every bundled scenario or a selected subset with its own synthetic JSON inputs and expected result; it shows progress, failures, and downloadable JSON reports. It always selects the local evaluator, even with an optional native backend configured.
+- Assertions now compare JSON records **structurally**, ignoring object property insertion order while preserving array ordering; invalid, missing and dangerous schema column names are rejected.
+- Sorting caches column values once per row. Nothing communicates with a Power Platform tenant; delegation, network connectors and side effects are **not** validated.
+
+See [Function Coverage](docs/FUNCTION_COVERAGE.md) and [Roadmap](docs/ROADMAP.md). These features represent a compatibility subset, not parity with Microsoft Power Fx.
+
 ## Advanced Power Fx coverage (v0.6.0)
 
 The next milestone introduces **81 runnable mock scenarios** (Canvas + cloud-flow WDL), 43 advanced semantics tests, and a catalog coverage test ensuring **every runnable function listed in the interactive reference has an exercised path**. This is **not full Power Fx language or runtime coverage**.

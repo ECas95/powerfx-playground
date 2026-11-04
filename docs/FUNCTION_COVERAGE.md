@@ -1,4 +1,4 @@
-# Power Fx Playground — function coverage matrix (v0.6.0)
+# Power Fx Playground — function coverage matrix (v0.7.0)
 
 > **No claim of 100% Power Fx / Power Automate coverage.** A function being parsable, selectable, or present in a test suite does not establish parity with a Microsoft Power Apps tenant, with delegation, or with platform-specific side effects.
 
@@ -24,6 +24,9 @@
 | `Search` / `ShowColumns` / `DropColumns` | Text search, privacy projections | Local table simulation | Selected column expressions only |
 | `Sequence` / `Index` / `IsEmpty` | Number series, table row lookup, empty result | Local table simulation | Sequence limited to 1,000 entries |
 | `ForAll` | Row projection, regex extraction | Local table simulation | No concurrency/side effects/connector calls |
+| `GroupBy` / `Ungroup` | Region-by-status nested records, aggregate regional revenue, filtered group export | Bounded local table simulation | Input order preserved within each group; global interleaving may change when ungrouped |
+| `RenameColumns` | CRM/API schema remapping, multiple column renames, collision checks | Bounded local table simulation | Uses mock JSON schema; column identifiers and legacy string names supported |
+| `SortByColumns` | Multiple sort keys, stable ties, custom ordinal lists | Bounded local table simulation | No connector delegation or culture-aware production collation parity |
 | `Sort` / aggregation | Row aliases, nested `Sum` and `With` | Local table simulation | No delegation or locale-specific collation guarantees |
 | Chaining `;` | `Trace(...); If(...)` | Local subset | Does not model all locale-dependent behavior grammar |
 
@@ -39,7 +42,7 @@ Each function advertised by the interactive local function catalog is covered by
 
 ## Prioritized uncovered families
 
-1. **Higher-order table operations:** `GroupBy`, `Ungroup`, `SortByColumns`, `RenameColumns`, `Patch` (pure preview vs real mutation), `AsType`, `IsType`, `Choices`, `ForAll` limits.
+1. **Higher-order table operations:** `GroupBy`, `Ungroup`, `SortByColumns`, and `RenameColumns` now have bounded local mocks; next: `Patch` (pure preview vs real mutation), `AsType`, `IsType`, `Choices` and `ForAll` limits.
 2. **Error semantics:** `Error`, `IsError`, `AllErrors`, `FirstError`, richer `IfError`, error records and native SDK checks.
 3. **Dates/time zones:** `Date`, `DateAdd`, `DateDiff`, `DateValue`, `Time`, `TimeZoneOffset`, ISO conversion and daylight-saving tests.
 4. **Text and modern data:** `ParseJSON`, typed conversions, `JSON`, string interpolation, `GUID`, `EncodeUrl`, `Char`, `UniChar`, `Find`, `Extract` and text splitting rules.
@@ -65,3 +68,13 @@ Each function advertised by the interactive local function catalog is covered by
 - [Regex in Power Fx](https://learn.microsoft.com/en-us/power-platform/power-fx/regular-expressions)
 - [Filter, Search, LookUp](https://learn.microsoft.com/en-us/power-platform/power-fx/reference/function-filter-lookup)
 - [Workflow Definition Language function reference](https://learn.microsoft.com/en-us/azure/logic-apps/expression-functions-reference)
+
+## v0.7 table-shaping implementation notes
+
+- Schema names may use modern identifiers (`Region`, `Rows`) or quoted legacy names (`"Region"`). The analyzer does not ask for these as free inputs.
+- `GroupBy`/`Ungroup` work only over supplied, bounded JSON arrays. Group membership and order are predictable locally, but there is no remote delegation.
+- `SortByColumns` evaluates string/number ordering in JavaScript, optionally with `SortOrder` or custom order arrays. It is **not** a guarantee that SQL/Dataverse/SharePoint will sort identically.
+- Use **Library QA** for deterministic regression tests of the bundled synthetic scenarios. Green checks do not prove live Microsoft tenant parity.
+- `tests/table-shaping.test.js` covers grouping, scope, immutability, column aliases, schemas, limits, stable sorting and key-order-independent JSON assertions.
+
+Microsoft sources: [GroupBy and Ungroup](https://learn.microsoft.com/en-us/power-platform/power-fx/reference/function-groupby), [Sort and SortByColumns](https://learn.microsoft.com/en-us/power-platform/power-fx/reference/function-sort), [table shaping](https://learn.microsoft.com/en-us/power-platform/power-fx/reference/function-table-shaping).

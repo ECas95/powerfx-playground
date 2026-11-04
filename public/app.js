@@ -217,6 +217,69 @@ async function runSuite(){
   }
   $('suite-summary').textContent=`${passed}/${cases.length} tests passed`;
 }
+// Built-in regression runner: never uses the user's current formula, inputs, or tenant.
+// When a .NET backend is enabled, engine:local bypasses it for deterministic baselines.
+let libraryRunId=0,libraryReport=null;
+function libraryScope(){
+  const scope=$('library-scope').value;
+  if(scope==='canvas'||scope==='flow')return examples.filter(sample=>sample.platform===scope);
+  if(scope==='visible'){
+    const search=$('example-search').value.trim().toLowerCase(),level=$('level-filter').value;
+    return examples.filter(sample=>(level==='all'||sample.level===level)&&(!search||`${sample.name} ${sample.group} ${sample.level} ${sample.description} ${sample.formula}`.toLowerCase().includes(search)));
+  }
+  return examples;
+}
+function libraryButtons(running){
+  $('library-run').disabled=running;
+  $('library-cancel').disabled=!running;
+}
+function cancelLibrary(){
+  libraryRunId++;libraryButtons(false);
+  $('library-summary').textContent='Library run cancelled. Start again to get a complete report.';
+  $('library-download').disabled=true;libraryReport=null;
+}
+async function runLibrary(){
+  const scenarios=libraryScope();if(!scenarios.length){$('library-summary').textContent='No scenarios match the selected scope.';return;}
+  const id=++libraryRunId;
+  libraryReport=null;$('library-download').disabled=true;$('library-results').replaceChildren();libraryButtons(true);
+  $('library-progress').value=0;
+  const results=[],counts={canvas:{passed:0,failed:0},flow:{passed:0,failed:0}};
+  try{
+    for(let i=0;i<scenarios.length;i++){
+      if(id!==libraryRunId)return;
+      const item=scenarios[i];let output;
+      try{output=await request('/api/evaluate',{formula:item.formula,platform:item.platform,inputs:item.inputs,expected:item.expected,engine:'local'});}
+      catch(error){output={success:false,error:{message:error.message}};}
+      if(id!==libraryRunId)return;
+      const passed=output.success===true&&output.assertion?.passed===true;
+      counts[item.platform][passed?'passed':'failed']++;
+      results.push({id:item.id,name:item.name,platform:item.platform,passed,expected:item.expected,received:output.value??null,error:output.error?.message??null});
+      const completed=i+1;
+      $('library-progress').value=Math.round(completed/scenarios.length*100);
+      $('library-summary').textContent=`Checking ${completed}/${scenarios.length} · ${results.filter(r=>r.passed).length} passed`;
+      // Give the UI a chance to paint and expose an actionable Cancel button.
+      if(completed%8===0)await new Promise(resolve=>setTimeout(resolve,0));
+    }
+    const passed=results.filter(row=>row.passed).length,failed=results.length-passed;
+    libraryReport={version:1,engine:'local',date:new Date().toISOString(),total:results.length,passed,failed,byPlatform:counts,results};
+    $('library-summary').textContent=`${passed}/${results.length} passed · Canvas ${counts.canvas.passed}/${counts.canvas.passed+counts.canvas.failed} · WDL ${counts.flow.passed}/${counts.flow.passed+counts.flow.failed}`;
+    $('library-download').disabled=false;
+    const area=$('library-results');area.replaceChildren();
+    if(failed===0){const good=document.createElement('p');good.className='library-success';good.textContent='All selected examples matched their expected local outputs.';area.append(good);}
+    else for(const entry of results.filter(row=>!row.passed).slice(0,30)){
+      const item=document.createElement('article');item.className='suite-result failed';
+      const title=document.createElement('strong');title.textContent=`✕ ${entry.platform} · ${entry.name}`;
+      const detail=document.createElement('code');detail.textContent=entry.error||`Expected ${formatJSON(entry.expected)}\nReceived ${formatJSON(entry.received)}`;
+      item.append(title,detail);area.append(item);
+    }
+    workspaceStatus(failed?`${failed} library checks failed`:'Library regression passed',failed>0);
+  }finally{if(id===libraryRunId)libraryButtons(false);}
+}
+function downloadLibraryReport(){
+  if(!libraryReport)return;
+  const blob=new Blob([formatJSON(libraryReport)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='powerfx-library-regression.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
 async function run(){
   clearTimeout(analyzeTimer);status($('execution-status'),'Running…');$('error-detail').hidden=true;workspaceStatus('Running expression');
   try{
@@ -331,6 +394,9 @@ async function init(){
   $('run-button').onclick=run;
   $('function-search').addEventListener('input',renderFunctionCatalog);
   $('suite-run').onclick=runSuite;
+  $('library-run').onclick=runLibrary;
+  $('library-cancel').onclick=cancelLibrary;
+  $('library-download').onclick=downloadLibraryReport;
   $('suite-template').onclick=()=>{
     try{
       const payload={name:'Current inputs',inputs:readInputs(),expected:$('expected').value.trim()?parseVal($('expected').value):null};

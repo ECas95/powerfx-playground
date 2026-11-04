@@ -17,6 +17,17 @@ function getInput(inputs,key){
 }
 function truthy(x){return Boolean(x);}
 function cmp(a,b){return typeof a==='string'&&typeof b==='string'?a.localeCompare(b,undefined,{sensitivity:'accent'}):a<b?-1:a>b?1:0;}
+// JSON record equality must not depend on insertion/key order; arrays remain ordered.
+function jsonEqual(a,b,depth=0){
+  if(a===b)return true;
+  if(depth>MAX_DEPTH||a===null||b===null||typeof a!==typeof b)return false;
+  if(Array.isArray(a)||Array.isArray(b))return Array.isArray(a)&&Array.isArray(b)&&a.length===b.length&&a.every((x,i)=>jsonEqual(x,b[i],depth+1));
+  if(typeof a==='object'){
+    const ak=Object.keys(a),bk=Object.keys(b);
+    return ak.length===bk.length&&ak.every(k=>Object.hasOwn(b,k)&&jsonEqual(a[k],b[k],depth+1));
+  }
+  return false;
+}
 function number(x){const n=Number(x);if(!Number.isFinite(n))throw new ExpressionError(`Valor numérico inválido: ${String(x)}`);return n;}
 function ensureArray(x){if(!Array.isArray(x))throw new ExpressionError('Esta función necesita una tabla o array JSON');if(x.length>MAX_ROWS)throw new ExpressionError('La tabla supera las 10 000 filas');return x;}
 function typeOf(value){if(value===null||value===undefined)return 'Blank / null';if(Array.isArray(value))return 'Table / array';if(typeof value==='object')return 'Record / object';return {string:'Text',number:'Number',boolean:'Boolean'}[typeof value]||typeof value;}
@@ -68,6 +79,22 @@ function makeMatcher(kind,text,pattern,options){
   }
   return out;
 }
+// Column names in modern Canvas Power Fx are identifiers; older apps used quoted strings.
+// Interpret these as schema names, never as external variable references or JS keys.
+function columnName(node,label='Column'){
+  const name=node?.type==='identifier'?node.name:node?.type==='literal'&&typeof node.value==='string'?node.value:null;
+  if(!name||BLOCKED.has(name)||name.length>128)throw new ExpressionError(`${label}: use an unquoted column identifier or quoted column name`);
+  return name;
+}
+function rowColumn(row,name,required=true){
+  if(!row||typeof row!=='object'||Array.isArray(row))throw new ExpressionError('Se esperaba un registro JSON en la tabla');
+  const found=Object.keys(row).find(k=>k.toLowerCase()===name.toLowerCase());
+  if(found===undefined&&required)throw new ExpressionError(`La columna «${name}» no existe`);
+  return found;
+}
+function validateColumnNames(names){
+  if(new Set(names.map(n=>n.toLowerCase())).size!==names.length)throw new ExpressionError('Los nombres de columnas deben ser únicos');
+}
 function scopedRow(scope,row,alias){
   if(!row||typeof row!=='object'||Array.isArray(row))throw new ExpressionError('Se esperaba un registro JSON en la tabla');
   const result={...scope,...row,ThisRecord:row};
@@ -115,8 +142,8 @@ function evaluateNode(n,inputs,mode,scope={},depth=0,trace=[],meta={}){
         case '+':return number(a)+number(b);case '-':return number(a)-number(b);
         case '*':return number(a)*number(b);case '/':if(number(b)===0)throw new ExpressionError('División por cero');return number(a)/number(b);
         case '%':return number(a)%number(b);case '^':return number(a)**number(b);case '&':return String(a??'')+String(b??'');
-        case '=':case '==':return JSON.stringify(a)===JSON.stringify(b)||typeof a==='string'&&typeof b==='string'&&a.toLowerCase()===b.toLowerCase();
-        case '<>':case '!=':return !(JSON.stringify(a)===JSON.stringify(b)||typeof a==='string'&&typeof b==='string'&&a.toLowerCase()===b.toLowerCase());
+        case '=':case '==':return jsonEqual(a,b)||typeof a==='string'&&typeof b==='string'&&a.toLowerCase()===b.toLowerCase();
+        case '<>':case '!=':return !(jsonEqual(a,b)||typeof a==='string'&&typeof b==='string'&&a.toLowerCase()===b.toLowerCase());
         case '<':return cmp(a,b)<0;case '>':return cmp(a,b)>0;case '<=':return cmp(a,b)<=0;case '>=':return cmp(a,b)>=0;
         case 'in':return typeof b==='string'?b.toLowerCase().includes(String(a).toLowerCase()):Array.isArray(b)&&b.includes(a);
         case 'exactin':return typeof b==='string'?b.includes(String(a)):Array.isArray(b)&&b.includes(a);
@@ -183,13 +210,92 @@ function evaluateNode(n,inputs,mode,scope={},depth=0,trace=[],meta={}){
           if(fn==='countif')return matches.length;
           return matches.length?(args[2]?go(args[2],scopedRow(scope,matches[0],alias)):matches[0]):null;
         }
+        if(fn==='groupby'){
+          required(3);
+          const rows=ensureArray(arg(0)),names=args.slice(1,-1).map(n=>columnName(n));
+          const groupColumn=columnName(args.at(-1),'GroupColumnName');
+          validateColumnNames([...names,groupColumn]);
+          const groups=new Map(),out=[];
+          for(const row of rows){
+            if(rowColumn(row,groupColumn,false)!==undefined)throw new ExpressionError(`La columna agrupada «${groupColumn}» ya existe`);
+            const keys=names.map(name=>rowColumn(row,name));
+            const values=keys.map(key=>row[key]);
+            const serialized=JSON.stringify(values);
+            let group=groups.get(serialized);
+            if(!group){group=Object.fromEntries(names.map((name,i)=>[name,values[i]]));group[groupColumn]=[];groups.set(serialized,group);out.push(group);}
+            const remaining=Object.fromEntries(Object.entries(row).filter(([key])=>!names.some(name=>name.toLowerCase()===key.toLowerCase())));
+            group[groupColumn].push(remaining);
+          }
+          return out;
+        }
+        if(fn==='ungroup'){
+          required(2);if(args.length!==2)throw new ExpressionError('Ungroup requiere exactamente dos argumentos');
+          const rows=ensureArray(arg(0)),name=columnName(args[1]),out=[];
+          for(const row of rows){
+            const key=rowColumn(row,name);
+            const nested=ensureArray(row[key]);
+            const common=Object.fromEntries(Object.entries(row).filter(([k])=>k!==key));
+            if(out.length+nested.length>MAX_ROWS)throw new ExpressionError('Ungroup supera las 10 000 filas permitidas');
+            for(const record of nested){
+              if(!record||typeof record!=='object'||Array.isArray(record))throw new ExpressionError('Ungroup requiere registros JSON anidados');
+              out.push({...common,...record});
+            }
+          }
+          return out;
+        }
+        if(fn==='renamecolumns'){
+          required(3);if(args.length%2===0)throw new ExpressionError('RenameColumns necesita pares de columnas');
+          const rows=ensureArray(arg(0)),pairs=[];
+          for(let i=1;i<args.length;i+=2)pairs.push([columnName(args[i]),columnName(args[i+1])]);
+          validateColumnNames(pairs.map(p=>p[0]));validateColumnNames(pairs.map(p=>p[1]));
+          return rows.map(row=>{
+            const sourceKeys=pairs.map(([old])=>rowColumn(row,old));
+            for(const [,next] of pairs)if(Object.keys(row).some(k=>k.toLowerCase()===next.toLowerCase())&&!sourceKeys.some(k=>k.toLowerCase()===next.toLowerCase()))throw new ExpressionError(`La columna destino «${next}» ya existe`);
+            const mapped=new Map(sourceKeys.map((old,i)=>[old,pairs[i][1]]));
+            const out={};for(const [key,value] of Object.entries(row)){
+              const name=mapped.get(key)??key;
+              if(Object.keys(out).some(k=>k.toLowerCase()===name.toLowerCase()))throw new ExpressionError(`Nombre duplicado «${name}»`);
+              out[name]=value;
+            }return out;
+          });
+        }
+        if(fn==='sortbycolumns'){
+          required(2);const rows=ensureArray(arg(0)),rules=[];
+          for(let i=1;i<args.length;){
+            const name=columnName(args[i++]);let direction=1,order=null;
+            if(i<args.length){
+              const ast=args[i];
+              const isEnum=ast.type==='member'&&ast.base?.type==='identifier'&&ast.base.name.toLowerCase()==='sortorder';
+              if(isEnum){direction=String(arg(i)).toLowerCase()==='descending'?-1:1;i++;}
+              else if(ast.type==='array'){order=ensureArray(arg(i)).map(x=>x&&typeof x==='object'&&'Value'in x?x.Value:x);i++;}
+              else if(ast.type==='literal'&&typeof ast.value==='string'&&/^(ascending|descending)$/i.test(ast.value)){direction=ast.value.toLowerCase()==='descending'?-1:1;i++;}
+              else if(i<args.length-1)throw new ExpressionError('Especifica SortOrder para cada columna salvo la última');
+            }
+            rules.push({name,direction,order});
+            if(order&&i<args.length)throw new ExpressionError('El orden personalizado solo admite una columna');
+          }
+          validateColumnNames(rules.map(r=>r.name));
+          // Cache sort keys once per row (rather than per comparator invocation).
+          // Sorting remains stable even on runtimes without guaranteed stable Array.sort.
+          const ranks=rules.map(r=>r.order?new Map(r.order.map((v,i)=>[JSON.stringify(v),i])):null);
+          const keyed=rows.map((row,index)=>({row,index,keys:rules.map(rule=>row[rowColumn(row,rule.name)])}));
+          return keyed.sort((a,b)=>{
+            for(let i=0;i<rules.length;i++){
+              const rule=rules[i],va=a.keys[i],vb=b.keys[i];let result;
+              if(ranks[i])result=(ranks[i].get(JSON.stringify(va))??ranks[i].size)-(ranks[i].get(JSON.stringify(vb))??ranks[i].size);
+              else result=cmp(va,vb)*rule.direction;
+              if(result!==0)return result;
+            }
+            return a.index-b.index;
+          }).map(x=>x.row);
+        }
         if(fn==='addcolumns'){
           required(3);if(args.length%2===0)throw new ExpressionError('AddColumns requiere pares de nombre y fórmula');
           const source=args[0],alias=source?.type==='alias'?source.alias:null;
           return ensureArray(go(alias?source.base:source)).map(row=>{
             const extra={...row};
             for(let i=1;i<args.length;i+=2){
-              const field=String(arg(i));if(BLOCKED.has(field))throw new ExpressionError('Columna no permitida');
+              const field=columnName(args[i]);
               extra[field]=go(args[i+1],scopedRow(scope,extra,alias));
             }
             return extra;
@@ -203,11 +309,11 @@ function evaluateNode(n,inputs,mode,scope={},depth=0,trace=[],meta={}){
           return out;
         }
         if(fn==='showcolumns'||fn==='dropcolumns'){
-          required(2);const columns=args.slice(1).map(a=>String(go(a)));
+          required(2);const columns=args.slice(1).map(column=>columnName(column));
           return ensureArray(arg(0)).map(row=>Object.fromEntries(Object.entries(row).filter(([k])=>fn==='showcolumns'?columns.includes(k):!columns.includes(k))));
         }
         if(fn==='search'){
-          required(3);const needle=String(arg(1)).toLowerCase();const columns=args.slice(2).map(a=>String(go(a)));
+          required(3);const needle=String(arg(1)).toLowerCase();const columns=args.slice(2).map(column=>columnName(column));
           return ensureArray(arg(0)).filter(row=>columns.some(k=>String(safeProp(row,k)??'').toLowerCase().includes(needle)));
         }
         if(['sum','average','min','max'].includes(fn)&&args.length>1&&Array.isArray(arg(0))){
@@ -306,7 +412,7 @@ export function evaluate({formula,platform='canvas',inputs={},expected,engine='l
   if(typeof result==='number'&&!Number.isFinite(result))throw new ExpressionError('Resultado numérico inválido');
   const output={success:true,platform,engine, value:result??null,valueType:typeOf(result),elapsedMs:Math.round((performance.now()-started)*100)/100};
   if(traces.length){output.traces=traces;output.warnings=['Trace is simulated locally. No Power Apps Live Monitor or Application Insights telemetry is sent. Trace requires a behavior formula in real Canvas apps.'];}
-  if(expected!==undefined)output.assertion={passed:JSON.stringify(result)===JSON.stringify(expected),expected};
+  if(expected!==undefined)output.assertion={passed:jsonEqual(result,expected),expected};
   return output;
 }
 export function inspect({formula,platform='canvas'}){
