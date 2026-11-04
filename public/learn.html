@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="Power Fx Learning Lab — guided multi-step Canvas and Power Automate expression challenges with live checks and executable walkthroughs.">
+  <title>Learning Lab · Power Fx Playground</title>
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./learn.css?v=0.8.0">
+  <script type="module" src="./learn.js?v=0.8.0"></script>
+</head>
+<body>
+<div class="learn-shell">
+  <header class="topbar learn-topbar">
+    <a class="brand" href="./" aria-label="Power Fx Playground workbench">
+      <span class="product-mark" aria-hidden="true"><span></span><span></span></span>
+      <span class="brand-copy"><strong>Power Fx Playground</strong><small>Interactive Learning Lab · v0.8</small></span>
+    </a>
+    <nav class="learn-topnav" aria-label="Product sections">
+      <a href="./" class="command-button">Workbench</a>
+      <a href="./learn.html" class="command-button learn-active" aria-current="page">Learning Lab</a>
+      <a href="https://github.com/ECas95/powerfx-playground" target="_blank" rel="noopener noreferrer" class="command-button learn-github">GitHub ↗</a>
+    </nav>
+  </header>
+  <div class="learn-contextbar">
+    <div><span class="panel-kicker">INTERACTIVE LEARNING</span><strong>Practice complex expressions in a safe sandbox</strong></div>
+    <div class="learn-overview"><span class="learn-green-dot"></span><span id="overview-count">Loading lessons…</span><div class="overview-meter"><span id="overview-bar"></span></div></div>
+  </div>
+  <div class="learn-grid">
+    <aside class="learn-explorer" aria-label="Learning path explorer">
+      <div class="learn-explorer-heading"><span class="panel-kicker">YOUR LEARNING PATH</span><h2>Practice cases</h2><p>Complete hands-on steps or study a fully executed solution.</p></div>
+      <div class="learn-filter-tools">
+        <input id="lesson-search" type="search" placeholder="Search topics or functions" aria-label="Search learning cases">
+        <div class="learn-filter-row"><select id="lesson-level" aria-label="Filter lesson level"><option value="all">All levels</option><option>Foundation</option><option>Intermediate</option><option>Advanced</option><option>Expert</option><option>Boss</option></select><select id="lesson-platform" aria-label="Filter lesson platform"><option value="all">Both platforms</option><option value="canvas">Power Fx</option><option value="flow">Automate</option></select></div>
+      </div>
+      <nav id="lesson-list" class="learn-list" aria-label="Available learning cases"><p class="learn-placeholder">Loading learning cases…</p></nav>
+      <div class="learn-explorer-bottom"><div><strong id="learning-completed">0 / 0 steps completed</strong><small>Progress saved locally in your browser</small></div><button id="export-progress" class="command-button" type="button">Export</button></div>
+    </aside>
+    <main class="learn-workspace" aria-label="Learning case workspace">
+      <div class="learn-breadcrumb"><span>LEARNING LAB</span><span aria-hidden="true">/</span><span id="lesson-category">Choose a case</span><span id="lesson-level-chip" class="learn-level-badge">—</span></div>
+      <div class="learn-case-heading"><div><h1 id="lesson-title">Learning Lab</h1><p id="lesson-subtitle">Hands-on Power Fx and WDL learning with multi-step evaluation.</p></div><span id="lesson-platform-chip" class="learn-platform-badge">Power Fx</span></div>
+      <div class="learn-goal"><span class="learn-goal-icon" aria-hidden="true">◎</span><div><strong>Your mission</strong><p id="lesson-goal">Select a lesson to begin.</p><div id="lesson-skills" class="learn-skills"></div></div></div>
+      <div class="learn-mode-bar"><div class="learn-mode-switch" role="tablist" aria-label="Learning mode"><button id="mode-challenge" role="tab" aria-selected="true" type="button" class="active">Challenge <span>Try it yourself</span></button><button id="mode-walkthrough" role="tab" aria-selected="false" type="button">Walkthrough <span>Solution & execution</span></button></div><span id="lesson-step-count">—</span></div>
+      <section id="challenge-panel" class="learn-face" role="tabpanel" aria-labelledby="mode-challenge">
+        <div class="learn-step-progress"><div class="learn-progress-heading"><strong>Step-by-step challenge</strong><span id="learn-progress-text">0 completed</span></div><div class="learn-progress-track"><span id="learn-progress-track"></span></div><div id="step-pills" class="learn-step-pills"></div></div>
+        <article class="learn-card learn-task"><div class="learn-task-top"><span id="step-number" class="learn-step-badge">STEP 1</span><span id="step-prompt-type" class="learn-prompt-type">Write a formula</span></div><h2 id="step-title">Choose a lesson</h2><p id="step-instruction">Write an expression that satisfies the requested outcome on every dataset.</p><div class="learn-dataset-block"><div class="learn-data-heading"><strong>Test context</strong><select id="challenge-dataset" aria-label="Inspect challenge test dataset"><option value="0">Primary dataset</option></select></div><p id="learn-context-explainer">Inputs are synthetic. Completed steps become Step1, Step2, etc.</p><details><summary>View selected dataset JSON</summary><pre id="learn-input-preview"></pre></details></div></article>
+        <section class="learn-card learn-formula-card" aria-label="Challenge expression editor"><div class="learn-editor-title"><strong>Expression editor</strong><span id="learn-editor-lang">Power Fx · local subset</span></div><textarea id="learn-formula" aria-label="Your formula for this step" spellcheck="false" placeholder="Write your solution here…" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea><div class="learn-editor-actions"><div><button id="hint-button" type="button" class="command-button">Show hint</button><button id="reset-formula" type="button" class="command-button">Clear</button></div><button id="check-step" type="button" class="primary-button">Check expression <kbd>Ctrl+Enter</kbd></button></div><p id="step-hint" class="learn-hint" hidden></p></section>
+        <div id="lesson-feedback" class="learn-feedback" role="status" aria-live="polite">Write your formula, then check it against all datasets.</div>
+        <div class="learn-step-nav"><button id="prev-step" type="button" class="command-button">← Previous</button><button id="next-step" type="button" class="command-button">Next step →</button></div>
+      </section>
+      <section id="walkthrough-panel" class="learn-face" role="tabpanel" aria-labelledby="mode-walkthrough" hidden>
+        <div class="learn-solution-intro"><div><span class="panel-kicker">EXECUTABLE SOLUTION</span><h2>Study each step and its result</h2><p>See the complete reference implementation, why it works, and the output produced by each expression. All computations run in the local compatibility sandbox.</p></div><button id="run-walkthrough" class="primary-button" type="button">Run full walkthrough</button></div>
+        <div class="learn-walk-dataset"><label for="walkthrough-dataset">Example dataset</label><select id="walkthrough-dataset" aria-label="Choose walkthrough dataset"></select><span id="walkthrough-state" role="status">Ready to execute</span></div>
+        <div id="walkthrough-steps" class="learn-walkthrough-steps"></div>
+      </section>
+    </main>
+    <aside class="learn-inspector" aria-label="Learning inspector"><div class="learn-inspector-header"><span class="panel-kicker">LEARNING GUIDE</span><h2>Lesson navigator</h2><p id="inspector-overview">Track the exercises in this case.</p></div><div id="learn-outline" class="learn-outline"></div><div class="learn-info-card"><strong>How grading works</strong><p>Formulas are checked against <b>two distinct input datasets</b>. Equivalent outputs pass; typing a single hard-coded answer should not.</p><p>For <code>Trace</code> exercises, the simulated event payload is checked too.</p></div><div class="learn-info-card"><strong>Power Platform caveat</strong><p>These are local mock-data exercises, not Microsoft tenant execution. Delegation, connectors, permissions and real behavior-side effects are not verified.</p><a href="https://learn.microsoft.com/en-us/power-platform/power-fx/reference/function-filter-lookup" target="_blank" rel="noopener noreferrer">Official Filter & LookUp reference ↗</a></div><button id="reset-lesson" class="command-button learn-reset" type="button">Reset this lesson</button></aside>
+  </div>
+  <footer class="learn-statusbar"><span><span class="learn-green-dot"></span> Learning Lab v0.8.0 · Sandbox evaluation</span><span>Independent open-source project · MIT · No Microsoft affiliation</span></footer>
+</div>
+<script defer src="./learn-guard.js?v=0.8.0"></script>
+</body>
+</html>

@@ -1,5 +1,11 @@
 # Power Fx Playground — Product Roadmap
 
+## Shipped in v0.8.0
+
+- Learning Lab: 12 multi-step hands-on cases (43 steps), five levels, two independent modes (Challenge / Walkthrough), two-dataset grading, progress in browser storage, and export.
+- Connected step outputs with Canvas variables and mock WDL Compose outputs, Trace event assertions, case links and mobile responsive guidance.
+- See [Learning Lab design and next iterations](LEARNING_LAB.md).
+
 ## Shipped in v0.7.0
 
 - Bounded `GroupBy`, `Ungroup`, `SortByColumns` and `RenameColumns` using mock Canvas JSON data.

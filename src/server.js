@@ -12,7 +12,7 @@ async function body(req){let raw='';for await(const part of req){raw+=part.toStr
 const server=http.createServer(async(req,res)=>{
   try{
     const pathname=new URL(req.url,'http://localhost').pathname;
-    if(req.method==='GET'&&pathname==='/api/status')return json(res,{ok:true,nativeCanvas:Boolean(remote),version:'0.7.0',flow:'WDL subset',localCanvas:'Power Fx subset'});
+    if(req.method==='GET'&&pathname==='/api/status')return json(res,{ok:true,nativeCanvas:Boolean(remote),version:'0.8.0',flow:'WDL subset',localCanvas:'Power Fx subset'});
     if(req.method==='POST'&&['/api/evaluate','/api/analyze'].includes(pathname)){
       const data=await body(req);
       if(typeof data.formula!=='string')return json(res,{success:false,error:{message:'Falta formula'}},400);
@@ -27,6 +27,12 @@ const server=http.createServer(async(req,res)=>{
       return json(res,evaluate(data));
     }
     if(req.method!=='GET')return json(res,{error:'Método no permitido'},405);
+    // Serve the exact same local evaluator modules used by GitHub Pages learning exercises.
+    if(pathname==='/core/evaluator.js'||pathname==='/core/parser.js'){
+      const moduleName=pathname.split('/').at(-1);
+      res.writeHead(200,{'Content-Type':'text/javascript; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
+      return res.end(await readFile(path.resolve(root,'../src',moduleName)));
+    }
     let filename=path.resolve(root,'.'+(pathname==='/'?'/index.html':pathname));
     if(!filename.startsWith(root+path.sep)&&filename!==root)return json(res,{error:'Ruta prohibida'},403);
     try{const s=await stat(filename);if(s.isDirectory())filename=path.join(filename,'index.html');}

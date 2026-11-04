@@ -6,6 +6,18 @@ A standalone, open-source web portal for testing **Power Apps Canvas Power Fx** 
 
 ![Node](https://img.shields.io/badge/Node.js-20%2B-blue) ![.NET](https://img.shields.io/badge/.NET-8%20optional-purple) ![License](https://img.shields.io/badge/License-MIT-green)
 
+## New in v0.8.0 — Interactive Learning Lab
+
+**Open [Learning Lab](https://ecas95.github.io/powerfx-playground/learn.html)** or use **Learning Lab** from the workbench top navigation. The learning space is independent of Canvas App Visualizer and preserves the existing editor.
+
+- **12 guided practice cases and 43 connected steps**, grouped into **Foundation, Intermediate, Advanced, Expert and Boss** levels. Scenarios prioritize record scopes, correlated nested filters, CRM handoffs, regex, `With`, `Trace`, regional aggregation and cloud-flow WDL expressions.
+- **Two faces:** *Challenge* has an editable formula, hints, synthetic inputs and step unlocking; *Walkthrough* exposes the solution plus executable step-by-step output. Users can inspect the primary and alternate datasets separately.
+- **Evaluation on two mock datasets** per step, including prior-step output propagation: `Step1` for local Canvas lessons, `outputs('Step1')` for mock Compose actions in WDL lessons. The result is graded by structural value; simulated `Trace` events are also checked.
+- **Progress tracking** persists solved expressions in browser local storage. Resume, reset a lesson, or export your formulas/progress as JSON without creating an account.
+- **Learning safety:** all cases use fictional inputs, local evaluation and explicit warnings. No actual delegation, remote connector actions, cloud flows, licensing or Microsoft runtime features are verified. The reference formulas are public educational fixtures, not a secure exam service.
+
+See the [complete learning documentation](docs/LEARNING_LAB.md) for the curriculum, constraints and extension guide.
+
 ## New in v0.7.0 — Compatibility Lab
 
 - **99 executable scenarios** (69 Canvas Power Fx and 30 Power Automate WDL), including 18 new realistic table-shaping cases.
