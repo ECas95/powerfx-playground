@@ -7,17 +7,17 @@
   <meta name="description" content="Power Fx Learning Lab — guided multi-step Canvas and Power Automate expression challenges with live checks and executable walkthroughs.">
   <title>Learning Lab · Power Fx Playground</title>
   <link rel="stylesheet" href="./styles.css">
-  <link rel="stylesheet" href="./learn.css?v=0.8.0">
-  <script type="module" src="./learn.js?v=0.8.0"></script>
+  <link rel="stylesheet" href="./learn.css?v=0.9.0">
+  <script type="module" src="./learn.js?v=0.9.0"></script>
 </head>
 <body>
 <div class="learn-shell">
   <header class="topbar learn-topbar">
     <a class="brand" href="./" aria-label="Power Fx Playground workbench">
       <span class="product-mark" aria-hidden="true"><span></span><span></span></span>
-      <span class="brand-copy"><strong>Power Fx Playground</strong><small>Interactive Learning Lab · v0.8</small></span>
+      <span class="brand-copy"><strong>Power Fx Playground</strong><small>Learning Lab · v0.9</small></span>
     </a>
-    <nav class="learn-topnav" aria-label="Product sections">
+    <nav class="learn-topnav" aria-label="Product sections"><label class="learn-language"><span id="language-label">Language</span><select id="learn-language" aria-label="Language / Idioma"><option value="en">English</option><option value="es">Español</option></select></label>
       <a href="./" class="command-button">Workbench</a>
       <a href="./learn.html" class="command-button learn-active" aria-current="page">Learning Lab</a>
       <a href="https://github.com/ECas95/powerfx-playground" target="_blank" rel="noopener noreferrer" class="command-button learn-github">GitHub ↗</a>
@@ -55,10 +55,72 @@
         <div id="walkthrough-steps" class="learn-walkthrough-steps"></div>
       </section>
     </main>
-    <aside class="learn-inspector" aria-label="Learning inspector"><div class="learn-inspector-header"><span class="panel-kicker">LEARNING GUIDE</span><h2>Lesson navigator</h2><p id="inspector-overview">Track the exercises in this case.</p></div><div id="learn-outline" class="learn-outline"></div><div class="learn-info-card"><strong>How grading works</strong><p>Formulas are checked against <b>two distinct input datasets</b>. Equivalent outputs pass; typing a single hard-coded answer should not.</p><p>For <code>Trace</code> exercises, the simulated event payload is checked too.</p></div><div class="learn-info-card"><strong>Power Platform caveat</strong><p>These are local mock-data exercises, not Microsoft tenant execution. Delegation, connectors, permissions and real behavior-side effects are not verified.</p><a href="https://learn.microsoft.com/en-us/power-platform/power-fx/reference/function-filter-lookup" target="_blank" rel="noopener noreferrer">Official Filter & LookUp reference ↗</a></div><button id="reset-lesson" class="command-button learn-reset" type="button">Reset this lesson</button></aside>
+    <aside class="learn-inspector" aria-label="Learning inspector"><div class="learn-inspector-header"><span class="panel-kicker">LEARNING GUIDE</span><h2>Lesson navigator</h2><p id="inspector-overview">Track the exercises in this case.</p></div><div id="learn-outline" class="learn-outline"></div><div class="learn-info-card"><strong>How grading works</strong><p>Formulas are checked against <b>two distinct input datasets</b>. Equivalent outputs pass; typing a single hard-coded answer should not.</p><p>For <code>Trace</code> exercises, the simulated event payload is checked too.</p></div><div class="learn-info-card"><strong>Power Platform caveat</strong><p>These are local mock-data exercises, not Microsoft tenant execution. Delegation, connectors, permissions and real behavior-side effects are not verified.</p><a href="https://learn.microsoft.com/en-us/power-platform/power-fx/reference/function-filter-lookup" target="_blank" rel="noopener noreferrer">Official Filter & LookUp reference ↗</a></div><button id="reset-lesson" class="command-button learn-reset" type="button">Reset this lesson</button>
+    <div class="learning-tools" aria-label="Learning extensions">
+      <div class="learn-tool-intro">
+        <span class="panel-kicker" id="lab-kicker">PRACTICE TOOLKIT</span>
+        <h3 id="lab-heading">Training tools</h3>
+      </div>
+      <div class="learn-tool-tabs" role="tablist" aria-label="Training tools">
+        <button type="button" data-lab-tab="tutor" role="tab" aria-selected="true" class="active">Tutor</button>
+        <button type="button" data-lab-tab="clinic" role="tab" aria-selected="false">Delegation</button>
+        <button type="button" data-lab-tab="dataset" role="tab" aria-selected="false">Data lab</button>
+        <button type="button" data-lab-tab="packs" role="tab" aria-selected="false">Packs</button>
+        <button type="button" data-lab-tab="skills" role="tab" aria-selected="false">Skills</button>
+      </div>
+      <section id="lab-tutor" class="learn-tool-content" role="tabpanel">
+        <h3 id="tutor-title">Formula coach</h3><p id="tutor-intro">Local, rule-based feedback. No AI service or tenant connection.</p>
+        <p id="tutor-diagnosis" class="learn-tool-status" role="status">Evaluate your formula to see guidance.</p>
+        <div id="tutor-hints" class="tutor-hints"></div>
+        <button id="tutor-next-hint" class="command-button" type="button">Reveal next hint</button>
+        <h4 id="tutor-related-label">Related exercises</h4><div id="tutor-related"></div>
+      </section>
+      <section id="lab-clinic" class="learn-tool-content" role="tabpanel" hidden>
+        <h3 id="clinic-title">Delegation Clinic</h3><p id="clinic-intro">Educational diagnostics only. Verify in Power Apps Studio.</p>
+        <label for="clinic-source" id="clinic-source-label">Data source</label>
+        <select id="clinic-source"><option value="dataverse">Dataverse</option><option value="sharepoint">SharePoint</option><option value="sql">SQL Server</option></select>
+        <label for="clinic-formula" id="clinic-formula-label">Formula to inspect</label>
+        <textarea id="clinic-formula" spellcheck="false" placeholder='Filter(Orders, StartsWith(Name, "A"))'></textarea>
+        <button id="clinic-analyze" type="button" class="primary-button">Analyze delegation</button>
+        <div id="clinic-result" class="learn-tool-status" role="status">Rule-based review; no connection to data sources.</div>
+        <div id="clinic-findings"></div>
+        <p id="clinic-illustration"></p>
+        <div id="clinic-links" class="learn-doc-links"></div>
+      </section>
+      <section id="lab-dataset" class="learn-tool-content" role="tabpanel" hidden>
+        <h3 id="dataset-title">Challenge data generator</h3><p id="dataset-intro">Reproducible synthetic inputs with edge cases.</p>
+        <label for="dataset-mode" id="dataset-mode-label">Stress mode</label>
+        <select id="dataset-mode">
+          <option value="duplicates">Duplicate rows</option>
+          <option value="nulls">Missing / null text</option>
+          <option value="boundaries">Numeric boundaries + reorder</option>
+        </select>
+        <label for="dataset-seed" id="dataset-seed-label">Reproducible seed</label>
+        <input id="dataset-seed" type="number" min="1" max="999999" value="42"/>
+        <button id="dataset-generate" class="command-button" type="button">Generate dataset</button>
+        <textarea id="dataset-preview" spellcheck="false" readonly aria-label="Generated JSON fixture"></textarea>
+        <button id="dataset-test" type="button" class="primary-button">Check my formula with this fixture</button>
+        <p id="dataset-result" class="learn-tool-status" role="status" aria-live="polite">Generate a fixture to begin.</p>
+      </section>
+      <section id="lab-packs" class="learn-tool-content" role="tabpanel" hidden>
+        <h3 id="packs-title">Community Challenge Packs</h3><p id="packs-intro">Load a validated offline JSON pack. No third-party JavaScript is executed.</p>
+        <input type="file" id="pack-file" accept="application/json,.json" hidden/>
+        <button id="pack-import" type="button" class="primary-button">Import pack JSON</button>
+        <button id="pack-template" type="button" class="command-button">Download template</button>
+        <button id="pack-remove" type="button" class="command-button" disabled>Remove imported pack</button>
+        <div id="pack-status" class="learn-tool-status" role="status" aria-live="polite">Use the template to create a contribution.</div>
+        <a id="pack-docs" class="learn-doc-link" href="https://github.com/ECas95/powerfx-playground/blob/main/docs/COMMUNITY_PACKS.md" target="_blank" rel="noopener noreferrer">Community contribution guide ↗</a>
+      </section>
+      <section id="lab-skills" class="learn-tool-content" role="tabpanel" hidden>
+        <h3 id="skills-title">Skill progress</h3><p id="skills-intro">Based on locally completed exercises, not a certification.</p>
+        <div id="skills-metrics"></div>
+        <h4 id="skills-next-label">Recommended next lessons</h4>
+        <div id="skills-recs"></div>
+      </section>
+    </div></aside>
   </div>
-  <footer class="learn-statusbar"><span><span class="learn-green-dot"></span> Learning Lab v0.8.0 · Sandbox evaluation</span><span>Independent open-source project · MIT · No Microsoft affiliation</span></footer>
+  <footer class="learn-statusbar"><span><span class="learn-green-dot"></span> Learning Lab v0.9.0 · Sandbox evaluation</span><span>Independent open-source project · MIT · No Microsoft affiliation</span></footer>
 </div>
-<script defer src="./learn-guard.js?v=0.8.0"></script>
+<script defer src="./learn-guard.js?v=0.9.0"></script>
 </body>
 </html>

@@ -1,0 +1,94 @@
+{
+  "schema": "powerfx-community-pack/1",
+  "id": "order-priority",
+  "title": "Order Processing Practice Pack",
+  "author": "Power Fx Playground contributors",
+  "lessons": [
+    {
+      "id": "queue-filter",
+      "level": "Intermediate",
+      "platform": "canvas",
+      "category": "Operations",
+      "estimatedMinutes": 12,
+      "title": "Identify orders for immediate follow-up",
+      "subtitle": "Filter a queue then calculate the value at risk.",
+      "goal": "Return urgent open orders above a threshold and calculate their aggregate exposure.",
+      "skills": [
+        "Filter",
+        "Sum",
+        "Record scope"
+      ],
+      "inputs": {
+        "Orders": [
+          {
+            "Id": 1,
+            "Status": "Open",
+            "Priority": "Urgent",
+            "Total": 280
+          },
+          {
+            "Id": 2,
+            "Status": "Closed",
+            "Priority": "Urgent",
+            "Total": 500
+          },
+          {
+            "Id": 3,
+            "Status": "Open",
+            "Priority": "Normal",
+            "Total": 180
+          },
+          {
+            "Id": 4,
+            "Status": "Open",
+            "Priority": "Urgent",
+            "Total": 60
+          }
+        ]
+      },
+      "variants": [
+        {
+          "name": "Shift B",
+          "inputs": {
+            "Orders": [
+              {
+                "Id": 5,
+                "Status": "Open",
+                "Priority": "Urgent",
+                "Total": 350
+              },
+              {
+                "Id": 6,
+                "Status": "Open",
+                "Priority": "Urgent",
+                "Total": 40
+              },
+              {
+                "Id": 7,
+                "Status": "Closed",
+                "Priority": "Urgent",
+                "Total": 700
+              }
+            ]
+          }
+        }
+      ],
+      "steps": [
+        {
+          "title": "Filter the backlog",
+          "instruction": "Return only Orders with Status Open, Priority Urgent and Total at least 100.",
+          "hint": "Combine three predicates inside Filter.",
+          "why": "Multiple conditions narrow the records to a decision-ready backlog.",
+          "solution": "Filter(Orders,Status=\"Open\" && Priority=\"Urgent\" && Total>=100)"
+        },
+        {
+          "title": "Calculate urgent exposure",
+          "instruction": "Sum Total from Step1.",
+          "hint": "Use Sum(Step1, Total).",
+          "why": "The aggregate is calculated after applying business policy.",
+          "solution": "Sum(Step1,Total)"
+        }
+      ]
+    }
+  ]
+}

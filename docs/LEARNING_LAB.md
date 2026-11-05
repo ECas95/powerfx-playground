@@ -56,3 +56,7 @@ The UI uses semantic, keyboard-accessible controls with contrast-aware Fluent-in
 4. **Shareable challenge packs:** validated JSON import/export schema, curriculum authoring API, and community-contributed lessons reviewed in CI.
 5. **Accessibility and languages:** Spanish/English toggle, further keyboard navigation improvements and stronger assistive-technology testing.
 6. **Optional verified runtime comparisons:** safely compare local output with the official Power Fx interpreter for supported pure formulas (no connector writes), explicitly separate WDL.
+
+## Learning tools v0.9
+
+The Learning Lab also provides Tutor, Delegation Clinic, Data Lab, Community Packs and Skills views, plus English/Spanish content. See [Learning Extensions](LEARNING_EXTENSIONS.md).

@@ -29,3 +29,13 @@
 - Runnable example with synthetic inputs and expected output.
 - Correct dependency analysis and browser cold-boot verification.
 - No hidden side effects; explicit mock/local labels.
+
+## Implemented in v0.9
+
+- [x] Rule-based formula tutor with progressive, context-specific hints and related lessons.
+- [x] Conservative delegation guidance for Dataverse, SharePoint, and SQL; official Microsoft Learn links.
+- [x] Deterministic synthetic dataset mutation (duplicates, nulls, numeric boundaries); separately graded stress checks.
+- [x] Offline community challenge packs with strict schema/reference execution validation and CLI CI checks.
+- [x] Spanish/English lesson briefs, instructions, explanations, hints and skill progress.
+
+Future: integrate the real Power Fx interpreter into the hosted experience where feasible, expand delegation rule metadata by column types, add signed community pack releases and advanced randomized property tests.

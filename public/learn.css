@@ -20,3 +20,46 @@
 
 /* Allow learners to inspect either synthetic regression dataset without changing the grading suite. */
 .learn-data-heading select{min-width:115px;max-width:165px;border:1px solid #d4e0ec;border-radius:4px;background:#fff;color:#45637a;padding:4px 6px;font-size:10px;cursor:pointer}
+
+
+/* v0.9 learning extensions — same Fluent-inspired visual system as workbench. */
+.learn-language{display:inline-flex;align-items:center;gap:6px;color:#627287;font-size:10px}
+.learn-language select{border:1px solid #d1dbe5;border-radius:5px;padding:5px 6px;background:#fff;font-size:11px;max-width:106px}
+.learning-tools{border-top:1px solid #dbe3ed;margin-top:24px;padding-top:18px}
+.learn-tool-intro h3{font-size:15px;margin:5px 0 14px;font-weight:650}
+.learn-tool-tabs{display:flex;flex-wrap:wrap;gap:3px;margin:0 0 13px;border-bottom:1px solid #dce3eb;padding:0 0 6px}
+.learn-tool-tabs button{border:0;border-radius:4px;padding:7px 9px;background:transparent;color:#64758a;font-size:10px;font-weight:600;cursor:pointer}
+.learn-tool-tabs button.active{background:#edf5ff;color:#0f6cbd}
+.learn-tool-tabs button:hover:not(.active){background:#f4f6f9}
+.learn-tool-content{min-width:0}
+.learn-tool-content h3{font-size:14px;margin:10px 0 5px;color:#25374d}
+.learn-tool-content h4{font-size:11px;margin:15px 0 8px}
+.learn-tool-content p{font-size:11px;line-height:1.55;color:#62758a;margin:6px 0 12px}
+.learn-tool-content label{display:block;margin:10px 0 6px;font-size:10px;font-weight:700;color:#4c607a}
+.learn-tool-content select,.learn-tool-content input,.learn-tool-content textarea{display:block;width:100%;border:1px solid #cdd8e4;border-radius:5px;background:#fff;padding:8px;font-size:11px;color:#283c51}
+.learn-tool-content textarea{font:11px/1.5 var(--code);min-height:95px;resize:vertical;max-height:490px;overflow:auto}
+.learn-tool-content button.primary-button,.learn-tool-content button.command-button{margin:6px 5px 4px 0;max-width:100%;white-space:normal}
+.learn-tool-status{padding:9px 10px;border:1px solid #dbe6f0;border-left:3px solid #9daec0;background:#f8fafc;border-radius:5px;color:#4f6275;overflow-wrap:anywhere;font-size:11px;line-height:1.55;white-space:pre-wrap}
+.learn-tool-status.fail{border-color:#f3c8c8;border-left-color:#c62c2c;background:#fff7f6;color:#8a3d3d}
+.learn-tool-status.pass{border-color:#c4e3cd;border-left-color:#218a47;background:#f5fcf7;color:#235b3a}
+.learn-tool-status.warn{border-color:#f0dfb5;border-left-color:#ad7500;background:#fffbef;color:#74582b}
+.tutor-hints{display:grid;gap:5px;margin-top:9px}
+.tutor-hints .tutor-hint-item{padding:8px 10px;border-radius:5px;background:#eef6ff;border:1px solid #d6e8fb;margin:0;color:#315c7a}
+.learn-related{width:100%;text-align:left;padding:9px 8px;border:1px solid #d9e4f0;border-radius:5px;margin:3px 0;background:#fff;color:#0f6cbd;font-size:11px;line-height:1.35}
+.learn-related:hover{background:#f0f7ff}
+.clinic-finding{padding:9px;border:1px solid #e3e8ed;margin:6px 0;border-radius:5px;background:#fbfcfe}
+.clinic-finding strong{font-size:10px;color:#324b60}
+.clinic-finding p{margin:3px 0;color:#5e7186;font-size:10px}
+.learn-doc-links{display:flex;flex-wrap:wrap;gap:9px}
+.learn-doc-link{display:inline-block;font-size:10px;color:#0c6da8;font-weight:600;margin-top:8px;text-decoration:underline}
+#dataset-preview{min-height:155px;max-height:460px}
+#dataset-seed{max-width:160px}
+#clinic-illustration{background:#f5f8fa;padding:9px 10px;border-radius:5px;margin-top:10px}
+.skill-row{padding:7px 0;border-bottom:1px solid #eff2f5}
+.skill-head{display:flex;justify-content:space-between;gap:7px;font-size:10px;color:#41566e}
+.skill-head strong{color:#0f6cbd;font-size:9px}
+.skill-meter{height:5px;border-radius:6px;margin-top:7px;background:#e5ecf2;overflow:hidden}
+.skill-meter span{display:block;height:100%;background:#0f6cbd;border-radius:6px}
+@media(max-width:1200px){.learn-tool-tabs button{padding:7px 5px;font-size:9px}.learn-language span{display:none}}
+@media(max-width:940px){.learning-tools{grid-column:1/-1}.learn-inspector{grid-template-columns:1fr 1fr}.learn-tool-tabs button{padding:7px 9px}}
+@media(max-width:650px){.learn-language select{font-size:10px}.learn-language span{display:none}.learning-tools{margin-top:16px;padding-top:16px}.learn-tool-tabs button{font-size:10px}.learn-tool-content textarea{min-height:120px}}

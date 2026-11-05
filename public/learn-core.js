@@ -54,13 +54,15 @@ async function expectedAt(lesson,at,fixture,run){
   }
   return reference;
 }
-export async function gradeStep({lesson,stepIndex,formula,previous=[],run}){
+export async function gradeStep({lesson,stepIndex,formula,previous=[],run,fixtures=null}){
   if(!lesson||!Number.isInteger(stepIndex)||stepIndex<0||stepIndex>=lesson.steps.length)throw Error('Invalid lesson step');
   if(typeof formula!=='string'||!formula.trim()||formula.length>INPUT_LIMIT)return {passed:false,message:'Enter a formula (up to 10,000 characters).',cases:[]};
   if(previous.length!==stepIndex||!previous.every(x=>typeof x==='string'&&x.trim()))return {passed:false,message:'Finish earlier steps before evaluating this one.',cases:[]};
   const cases=[];
-  for(const fixture of lessonFixtures(lesson)){
-    const expected=await expectedAt(lesson,stepIndex,fixture,run);
+  for(const fixture of (fixtures||lessonFixtures(lesson))){
+    let expected;
+    try{expected=await expectedAt(lesson,stepIndex,fixture,run);}
+    catch(error){return {passed:false,ungradable:true,message:`Reference formula cannot evaluate stress fixture: ${error.message}`,cases};}
     const context={...fixture.inputs};
     for(let i=0;i<stepIndex;i++){
       const prior=await runSafely(run,{formula:previous[i],platform:lesson.platform,inputs:context});

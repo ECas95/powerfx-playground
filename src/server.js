@@ -12,7 +12,7 @@ async function body(req){let raw='';for await(const part of req){raw+=part.toStr
 const server=http.createServer(async(req,res)=>{
   try{
     const pathname=new URL(req.url,'http://localhost').pathname;
-    if(req.method==='GET'&&pathname==='/api/status')return json(res,{ok:true,nativeCanvas:Boolean(remote),version:'0.8.0',flow:'WDL subset',localCanvas:'Power Fx subset'});
+    if(req.method==='GET'&&pathname==='/api/status')return json(res,{ok:true,nativeCanvas:Boolean(remote),version:'0.9.0',flow:'WDL subset',localCanvas:'Power Fx subset'});
     if(req.method==='POST'&&['/api/evaluate','/api/analyze'].includes(pathname)){
       const data=await body(req);
       if(typeof data.formula!=='string')return json(res,{success:false,error:{message:'Falta formula'}},400);

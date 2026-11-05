@@ -227,3 +227,7 @@ This is a community project and is not affiliated with or endorsed by Microsoft.
 The 81 scenarios are now compiled with the workbench into a single browser script (`public/workbench.js`) via `npm run build:client`, eliminating a separate ES-module load before scenario rendering. The app renders the scenario explorer before asynchronous checks; the boot guard reports failures instead of leaving a silent empty panel. The previous missing DOM helper was fixed. The regression test uses an isolated DOM simulation to confirm all scenario buttons render at boot.
 
 When editing `public/app.js` or `public/scenarios.js`, regenerate the browser bundle (`npm run build:client`). The `npm test` command verifies bundle freshness.
+
+## v0.9 Learning Lab extensions
+
+The Learning Lab now includes a local rule-based formula coach with progressive hints and related lessons, a conservative Dataverse/SharePoint/SQL Delegation Clinic, seeded edge-case datasets, validated offline Community Challenge Packs and Spanish/English lesson content. These features are educational: the tutor is not a generative AI service, and delegation guidance does not verify live connectors. See [Learning Extensions](docs/LEARNING_EXTENSIONS.md), [Community Challenge Packs](docs/COMMUNITY_PACKS.md), and [the Learning Lab](public/learn.html).

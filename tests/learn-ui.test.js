@@ -11,8 +11,8 @@ const server=readFileSync(new URL('../src/server.js',import.meta.url),'utf8');
 test('Learning Lab is reachable through a visible workbench navigation link',()=>{
   assert.match(workbench,/href="\.\/learn\.html"/);
   assert.match(page,/href="\.\/"/);
-  assert.match(page,/src="\.\/learn\.js\?v=0\.8\.0"/);
-  assert.match(page,/src="\.\/learn-guard\.js\?v=0\.8\.0"/);
+  assert.match(page,/src="\.\/learn\.js\?v=0\.9\.0"/);
+  assert.match(page,/src="\.\/learn-guard\.js\?v=0\.9\.0"/);
   assert.match(server,/pathname==='\/core\/evaluator\.js'/);
 });
 test('All referenced interactive controls exist and have IDs',()=>{
